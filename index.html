@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кабинет Проводника</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f3ee;--surface:#fff;--surface2:#f0ebe4;--border:#e0d8ce;--text:#2c2416;--text2:#7a6e61;--accent:#8b5e3c;--accent2:#c49a6c;--gold:#d4a853;--c1:#e63946;--c2:#f4845f;--c3:#f9c74f;--c4:#52b788;--c5:#4cc9f0;--c6:#7b5ea7;--c7:#c77dff;--r:16px;--sh:0 4px 24px rgba(44,36,22,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+h1,h2,h3{font-family:'Cormorant Garamond',serif}
+.screen{display:none;min-height:100vh;padding-bottom:80px}
+.screen.active{display:block}
+#s-login{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 24px;background:linear-gradient(160deg,#2c2416,#5c3d1e 50%,#8b5e3c)}
+#s-login.active{display:flex!important}
+.logo{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:300;color:#f7f3ee;letter-spacing:2px;text-align:center;margin-bottom:6px}
+.logo-sub{color:var(--accent2);font-size:12px;letter-spacing:4px;text-transform:uppercase;text-align:center;margin-bottom:44px}
+.login-card{background:rgba(44,36,22,.7);border:1px solid rgba(212,168,83,.3);border-radius:var(--r);padding:32px 28px;width:100%;max-width:360px;backdrop-filter:blur(10px)}
+.ltabs{display:flex;gap:8px;margin-bottom:24px}
+.ltab{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(247,243,238,.2);background:transparent;color:rgba(247,243,238,.5);font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer;transition:all .2s}
+.ltab.active{background:rgba(247,243,238,.15);color:#f7f3ee;border-color:rgba(247,243,238,.4)}
+.fl{margin-bottom:16px}
+.fl label{display:block;color:rgba(247,243,238,.6);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
+.fi{width:100%;padding:12px 16px;border-radius:10px;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);color:#fff;font-family:'Nunito',sans-serif;font-size:15px;outline:none}
+.fi::placeholder{color:rgba(247,243,238,.3)}
+.btn-gold{width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent2),var(--gold));color:#2c2416;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(247,243,238,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:22px}
+.topbar-back{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px 0 20px}
+.logout-btn{position:absolute;top:12px;right:16px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--text2);cursor:pointer;font-family:"Nunito",sans-serif;z-index:101}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;cursor:pointer;border:none;background:transparent}
+.ni-icon{font-size:22px}
+.ni-label{font-size:10px;color:var(--text2);letter-spacing:.5px}
+.ni.active .ni-label{color:var(--accent);font-weight:600}
+.pp{padding:20px}
+.greeting{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;margin-bottom:4px}
+.gsub{color:var(--text2);font-size:13px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.stat{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh)}
+.stat-n{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:300;color:var(--accent)}
+.stat-l{font-size:12px;color:var(--text2);margin-top:4px}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:16px}
+.cc{background:var(--surface);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;box-shadow:var(--sh);display:flex;align-items:center;gap:16px;cursor:pointer;transition:transform .15s}
+.cc:hover{transform:translateY(-2px)}
+.cav{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;flex-shrink:0;background:linear-gradient(135deg,var(--accent2),var(--gold));color:#fff}
+.ci{flex:1}
+.cn{font-weight:600;font-size:15px;margin-bottom:2px}
+.cm{font-size:12px;color:var(--text2)}
+.sb{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.sn{background:#e8f5e9;color:#2e7d32}
+.sa{background:#fff3e0;color:#e65100}
+.sd{background:#f3e5f5;color:#6a1b9a}
+.search{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;width:100%;font-family:'Nunito',sans-serif;font-size:15px;margin-bottom:20px;outline:none}
+.fab{position:fixed;bottom:90px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:28px;border:none;box-shadow:0 4px 16px rgba(139,94,60,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:150}
+.ch{background:linear-gradient(135deg,var(--accent),var(--accent2));padding:32px 20px 24px;color:#fff}
+.chav{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:32px;margin-bottom:12px}
+.chn{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;margin-bottom:4px}
+.chm{font-size:13px;opacity:.8}
+.tabs{display:flex;background:var(--surface2);border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:14px 8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tc{display:none;padding:20px}
+.tc.active{display:block}
+.ir{display:flex;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.il{font-size:12px;color:var(--text2);width:110px;flex-shrink:0;padding-top:2px}
+.iv{font-size:14px;flex:1}
+.brow{display:flex;gap:12px;margin-top:20px}
+.bo{flex:1;padding:13px;border-radius:12px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
+.bf{flex:1;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.mi{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);outline:none;margin-bottom:10px}
+.mi:focus{border-color:var(--accent2)}
+.mdr{display:flex;gap:8px;margin-bottom:10px}
+.mdi{padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);outline:none;width:100%}
+.mrr{display:flex;gap:16px;margin:12px 0;font-size:14px}
+.mrr label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.bcalc{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.mres{display:none;margin-top:20px}
+.mpw{display:flex;justify-content:center;margin-bottom:32px;padding:60px 70px}
+.mp{position:relative;width:200px;height:200px}
+.qd{content:"";width:100%;height:100%;border:3px solid var(--border);position:absolute;box-sizing:border-box}
+.qd::before{content:"";width:142%;height:3px;position:absolute;left:-42%;top:50%;margin-top:-1.5px;background:var(--border)}
+.qd::after{content:"";width:3px;height:142%;position:absolute;left:50%;top:-21%;margin-left:-1.5px;background:var(--border)}
+.qd.t45{transform:rotate(45deg);border-color:rgba(200,180,160,.4)}
+.qd.t45::before,.qd.t45::after{background:rgba(200,180,160,.4)}
+.nb{position:absolute;font-size:11px;font-weight:700;line-height:20px;text-align:center;color:#fff;background:var(--accent);width:20px;height:20px;border-radius:50%;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.nb.n1{left:-52px;top:50%;margin-top:-10px}.nb.n2{top:-52px;left:50%;margin-left:-10px}.nb.n3{right:-52px;top:50%;margin-top:-10px}.nb.n4{bottom:-52px;left:50%;margin-left:-10px}
+.nb.n5{top:-10px;left:-10px}.nb.n6{bottom:-10px;right:-10px}.nb.n7{top:-10px;right:-10px}.nb.n8{bottom:-10px;left:-10px}
+.nb.n9{top:50%;left:50%;width:42px;font-size:9px;margin-top:-10px;margin-left:-11px}
+.nb.n11{left:24px;top:24px}.nb.n12{left:6px;top:6px}.nb.n13{right:24px;bottom:24px}.nb.n14{right:6px;bottom:6px}
+.nb.n15{right:24px;top:24px}.nb.n16{right:6px;top:6px}.nb.n17{left:24px;bottom:24px}.nb.n18{left:6px;bottom:6px}
+.nb.n19{left:-10px;top:50%;margin-top:-10px}.nb.n20{left:-30px;top:50%;margin-top:-10px}
+.nb.n21{right:-10px;top:50%;margin-top:-10px}.nb.n22{right:-30px;top:50%;margin-top:-10px}
+.nb.n23{left:50%;top:-10px;margin-left:-10px}.nb.n24{left:50%;top:-30px;margin-left:-10px}
+.nb.n25{left:50%;bottom:-10px;margin-left:-10px}.nb.n26{left:50%;bottom:-30px;margin-left:-10px}
+.cr{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.cr:last-child{border-bottom:none}
+.cd{width:10px;height:10px;border-radius:50%;margin-right:10px;flex-shrink:0}
+.cname{flex:1;color:var(--text2)}
+.cnums{font-weight:600}
+.ds{margin-top:16px;padding:16px;background:var(--bg);border-radius:12px}
+.dt{font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:12px}
+.di{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.di:last-child{border-bottom:none}
+.dv{font-weight:700;color:var(--accent)}
+.sc{background:var(--surface);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;box-shadow:var(--sh);cursor:pointer}
+.sd2{font-size:12px;color:var(--text2);margin-bottom:6px}
+.st{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px}
+.t-d{background:#e8f5e9;color:#2e7d32}.t-c{background:#e3f2fd;color:#1565c0}.t-g{background:#fce4ec;color:#880e4f}
+.sr{font-size:14px;color:var(--text)}
+.sbar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);margin-top:8px;flex-wrap:wrap}
+.sdots{display:flex;gap:2px}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--border)}
+.sdot.f{background:var(--accent2)}
+.dh{padding:24px 20px 20px;background:linear-gradient(135deg,#2c2416,#5c3d1e);color:#fff}
+.dcn{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;margin-bottom:4px}
+.dcs{font-size:13px;opacity:.7}
+.dprog{display:flex;gap:6px;margin-top:16px}
+.dpb{height:4px;flex:1;border-radius:2px;background:rgba(255,255,255,.2);transition:background .3s}
+.dpb.done{background:var(--gold)}.dpb.cur{background:#fff}
+.db{padding:20px}
+.dq{font-family:'Cormorant Garamond',serif;font-size:22px;font-style:italic;margin-bottom:20px;line-height:1.4}
+.card{background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(44,36,22,.15);margin-bottom:20px;cursor:pointer}
+.cv{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#f0ebe4;}
+.ctl{position:absolute;top:12px;right:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.tr{background:rgba(82,183,136,.9);color:#fff}.tf{background:rgba(230,57,70,.9);color:#fff}.tm{background:rgba(124,77,255,.9);color:#fff}
+.cdesc{padding:16px 20px;border-top:1px solid var(--border)}
+.cdt{font-size:14px;line-height:1.6;color:var(--text);margin-bottom:4px}
+.cds{font-size:11px;color:var(--text2)}
+.na{width:100%;min-height:80px;padding:12px 16px;border:1px solid var(--border);border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--surface);resize:vertical;outline:none;margin-bottom:16px}
+.na:focus{border-color:var(--accent2)}
+.dnav{display:flex;gap:12px;margin-top:8px}
+.mo{position:fixed;inset:0;background:rgba(44,36,22,.5);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.mo.open{display:flex}
+.modal{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-height:90vh;overflow-y:auto;animation:su .3s ease}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mh{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
+.mt{font-family:'Cormorant Garamond',serif;font-size:26px;margin-bottom:20px}
+.ff{margin-bottom:16px}
+.fl2{display:block;font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.finp{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;background:var(--bg);outline:none}
+.finp:focus{border-color:var(--accent2)}
+.fta{width:100%;min-height:80px;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;background:var(--bg);outline:none;resize:vertical}
+.fsel{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;background:var(--bg);outline:none}
+.sumcard{background:linear-gradient(135deg,#2c2416,#5c3d1e);border-radius:var(--r);padding:24px;color:#fff;margin-bottom:20px}
+.sumt{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;margin-bottom:16px}
+.suma{font-size:14px;line-height:1.8;opacity:.9;margin-bottom:16px}
+.sumrl{font-size:12px;text-transform:uppercase;letter-spacing:2px;opacity:.6;margin-bottom:8px}
+.sumr{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+.sumn{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#2c2416;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.sumrt{font-size:13px;line-height:1.6;opacity:.9}
+.fc{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh);border-left:4px solid var(--gold);margin-bottom:20px}
+.fl3{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--text2);margin-bottom:8px}
+.ft{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic}
+.cvh{background:linear-gradient(160deg,#2c2416,#8b5e3c);padding:40px 20px 28px;color:#fff;text-align:center}
+.cvn{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;margin-bottom:6px}
+.empty{text-align:center;padding:40px 20px;color:var(--text2)}
+.ei{font-size:48px;margin-bottom:12px}
+.et{font-family:'Cormorant Garamond',serif;font-size:20px}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#2c2416;color:#fff;padding:12px 24px;border-radius:30px;font-size:14px;z-index:1000;display:none;white-space:nowrap}
+.toast.show{display:block;animation:ta 2.5s ease}
+@keyframes ta{0%{opacity:0;transform:translateX(-50%) translateY(10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+.lf{display:flex;gap:8px;align-items:center}
+.lf .finp{flex:1}
+.lb{padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:18px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="s-login" class="screen active">
+  <div style="text-align:center;margin-bottom:40px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:12px;font-weight:300;color:rgba(247,243,238,0.55);letter-spacing:7px;text-transform:uppercase;margin-bottom:8px">✦ Пространство трансформации</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:400;color:#f7f3ee;letter-spacing:1px;line-height:1.1">Юлии Солдатовой</div>
+  </div>
+  <div class="login-card">
+    <div class="ltabs">
+      <button class="ltab active" id="tab-specialist" onclick="window.setRole('specialist')">Специалист</button>
+      <button class="ltab" id="tab-client" onclick="window.setRole('client')">Клиент</button>
+    </div>
+    <div id="auth-role-hint" style="font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:8px;min-height:16px"></div>
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <button id="btn-login-mode" onclick="window.setAuthMode('login')" id="btn-login-mode" style="flex:1;padding:9px;border-radius:10px;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);color:#f7f3ee;font-family:Nunito,sans-serif;font-size:13px;cursor:pointer;font-weight:600">Войти</button>
+      <button id="btn-reg-mode" onclick="window.setAuthMode('register')" id="btn-reg-mode" style="flex:1;padding:9px;border-radius:10px;border:2px solid rgba(212,168,83,.5);background:rgba(212,168,83,.12);color:#d4a853;font-family:Nunito,sans-serif;font-size:13px;cursor:pointer;font-weight:600">Регистрация</button>
+    </div>
+    <!-- Name (register only) -->
+    <div id="auth-name-row" style="display:none;margin-bottom:14px">
+      <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px">Имя</label>
+      <input id="auth-name" type="text" placeholder="Ваше имя" style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-family:Nunito,sans-serif;font-size:15px;outline:none">
+    </div>
+    <!-- Email -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px">Email</label>
+      <input id="login-name-input" type="email" placeholder="your@email.com" style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-family:Nunito,sans-serif;font-size:15px;outline:none">
+    </div>
+    <!-- Password -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px">Пароль</label>
+      <input id="login-pass-input" type="password" placeholder="••••••" style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-family:Nunito,sans-serif;font-size:15px;outline:none">
+    </div>
+    <!-- Specialist code (client register only) -->
+    <div id="auth-specialist-code-row" style="display:none;margin-bottom:14px">
+      <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px">Код специалиста</label>
+      <input id="auth-spec-code" type="text" placeholder="XXXXXX" style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid rgba(212,168,83,.4);background:rgba(212,168,83,.1);color:#d4a853;font-family:Nunito,sans-serif;font-size:15px;outline:none;letter-spacing:4px;text-transform:uppercase">
+      <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:5px">Получите код у вашего специалиста</div>
+    </div>
+    <!-- Error -->
+    <div id="auth-error" style="display:none;color:#ff8a80;font-size:13px;margin-bottom:10px;text-align:center;background:rgba(255,100,80,.12);padding:8px;border-radius:8px"></div>
+    <!-- Submit -->
+    <button id="auth-btn" onclick="window.doLogin()" style="width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#c49a6c,#d4a853);color:#2c2416;font-family:Nunito,sans-serif;font-size:15px;font-weight:700;cursor:pointer">Войти</button>
+    <div id="auth-toggle" style="display:none"></div>
+    <div style="text-align:center;margin-top:8px">
+      <a href="#" onclick="window.resetPassword();return false" style="font-size:12px;color:rgba(255,255,255,.35);text-decoration:none">Забыли пароль?</a>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="s-dash" class="screen">
+  <div class="topbar"><div class="topbar-title" style="font-size:16px">✦ Пространство трансформации</div><button class="logout-btn" class="bo" onclick="window.logout()">Выйти</button></div>
+  <div class="pp">
+    <div class="greeting" id="dg"></div>
+    <div class="gsub" id="dd2"></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="sc1">0</div><div class="stat-l">Клиентов</div></div>
+      <div class="stat"><div class="stat-n" id="ss1">0</div><div class="stat-l">Сессий</div></div>
+    </div>
+    <div class="sec-title">Последние клиенты</div>
+    <div id="dcl"></div>
+  </div>
+</div>
+
+<!-- CLIENTS -->
+<div id="s-clients" class="screen">
+  <div class="topbar"><div class="topbar-title">Клиенты</div></div>
+  <div class="pp">
+    <input class="search" type="text" placeholder="🔍 Поиск..." id="client-search" oninput="window.filterC(this.value)">
+    <div id="cl"></div>
+  </div>
+  <button class="fab" id="fab-new-client" onclick="window.openM('m-nc')">+</button>
+</div>
+
+<!-- CLIENT PROFILE -->
+<div id="s-profile" class="screen">
+  <div class="topbar">
+    <div class="topbar-back" onclick="window.goBack()" class="topbar-back" onclick="window.goBack()" style="color:#2c2416;border-color:#e0d8ce">←</div>
+    <div class="topbar-title">Карточка</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="ch"><div class="chav" id="pav"></div><div class="chn" id="pn"></div><div class="chm" id="pm"></div></div>
+  <div class="tabs">
+    <div class="tab active" onclick="swTab(this,'ti')">Данные</div>
+    <div class="tab" onclick="swTab(this,'tm')">Матрица</div>
+    <div class="tab" onclick="swTab(this,'ts')">Сессии</div>
+  </div>
+  <div class="tc active" id="ti">
+    <div id="pir"></div>
+    <div class="brow">
+      <button class="bo" onclick="window.openNewSess()">+ Сессия</button>
+      <button class="bf" onclick="window.startDiag()">▶ Диагностика</button>
+    </div>
+    <div style="margin-top:20px">
+      <label class="fl2">Ссылка на встречу (Google Meet)</label>
+      <div class="lf">
+        <input class="finp" id="mli" type="url" placeholder="https://meet.google.com/...">
+        <button class="lb" id="btn-save-ml" onclick="window.saveML()" title="Сохранить">💾</button>
+        <button class="lb" id="mlo" id="mlo" style="display:none">🔗</button>
+      </div>
+    </div>
+  </div>
+  <div class="tc" id="tm">
+    <div style="background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh)">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:16px">Матрица судьбы</div>
+      <input class="mi" id="mx-sn" type="text" placeholder="Фамилия">
+      <input class="mi" id="mx-nm" type="text" placeholder="Имя">
+      <input class="mi" id="mx-pt" type="text" placeholder="Отчество">
+      <input class="mi" id="mx-dd" type="text" placeholder="Фамилия отца">
+      <input class="mi" id="mx-mm" type="text" placeholder="Девичья фамилия матери">
+      <div class="mdr">
+        <input class="mdi" id="mx-d" type="text" maxlength="2" placeholder="День">
+        <input class="mdi" id="mx-mo" type="text" maxlength="2" placeholder="Месяц">
+        <input class="mdi" id="mx-y" type="text" maxlength="4" placeholder="Год">
+      </div>
+      <div class="mrr">
+        <label><input type="radio" name="mxp" id="mx-m" value="1"> Мужчина</label>
+        <label><input type="radio" name="mxp" id="mx-j" value="2" checked> Женщина</label>
+      </div>
+      <button class="bcalc" id="btn-calc-mx" onclick="window.calcMx()">Рассчитать матрицу</button>
+      <div class="mres" id="mres">
+        <div class="mpw"><div class="mp">
+          <div class="qd"></div><div class="qd t45"></div>
+          <div class="nb n1" id="m1">0</div><div class="nb n2" id="m2">0</div><div class="nb n3" id="m3">0</div><div class="nb n4" id="m4">0</div>
+          <div class="nb n5" id="m5">0</div><div class="nb n6" id="m6">0</div><div class="nb n7" id="m7">0</div><div class="nb n8" id="m8">0</div>
+          <div class="nb n9" id="m9">0/0</div>
+          <div class="nb n11" id="m11">0</div><div class="nb n12" id="m12">0</div><div class="nb n13" id="m13">0</div><div class="nb n14" id="m14">0</div>
+          <div class="nb n15" id="m15">0</div><div class="nb n16" id="m16">0</div><div class="nb n17" id="m17">0</div><div class="nb n18" id="m18">0</div>
+          <div class="nb n19" id="m19">0</div><div class="nb n20" id="m20">0</div><div class="nb n21" id="m21">0</div><div class="nb n22" id="m22">0</div>
+          <div class="nb n23" id="m23">0</div><div class="nb n24" id="m24">0</div><div class="nb n25" id="m25">0</div><div class="nb n26" id="m26">0</div>
+        </div></div>
+        <div class="ds"><div class="dt">Предназначение</div>
+          <div class="di"><span>Личное</span><span class="dv" id="pl">0</span></div>
+          <div class="di"><span>Социальное</span><span class="dv" id="ps">0</span></div>
+          <div class="di"><span>Духовное</span><span class="dv" id="pd">0</span></div>
+          <div class="di"><span>Родовые муж.</span><span class="dv"><span id="mr1">0</span>·<span id="mr2">0</span>·<span id="mr3">0</span></span></div>
+          <div class="di"><span>Родовые жен.</span><span class="dv"><span id="jr1">0</span>·<span id="jr2">0</span>·<span id="jr3">0</span></span></div>
+        </div>
+        <div style="margin-top:16px;background:var(--bg);border-radius:12px;padding:16px">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:12px">Чакры</div>
+          <div class="cr"><div class="cd" style="background:var(--c1)"></div><div class="cname">1 Муладхара</div><div class="cnums"><span id="c11">0</span>·<span id="c12">0</span>·<span id="c13">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c2)"></div><div class="cname">2 Свадхистхана</div><div class="cnums"><span id="c21">0</span>·<span id="c22">0</span>·<span id="c23">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c3)"></div><div class="cname">3 Манипура</div><div class="cnums"><span id="c31">0</span>·<span id="c32">0</span>·<span id="c33">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c4)"></div><div class="cname">4 Анахата</div><div class="cnums"><span id="c41">0</span>·<span id="c42">0</span>·<span id="c43">0</span>/<span id="c44">0</span>·<span id="c45">0</span>·<span id="c46">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c5)"></div><div class="cname">5 Вишудха</div><div class="cnums"><span id="c51">0</span>·<span id="c52">0</span>·<span id="c53">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c6)"></div><div class="cname">6 Аджна</div><div class="cnums"><span id="c61">0</span>·<span id="c62">0</span>·<span id="c63">0</span></div></div>
+          <div class="cr"><div class="cd" style="background:var(--c7)"></div><div class="cname">7 Сахасрара</div><div class="cnums"><span id="c71">0</span>·<span id="c72">0</span>·<span id="c73">0</span>/<span id="c74">0</span>·<span id="c75">0</span>·<span id="c76">0</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tc" id="ts"><div id="psl"></div></div>
+</div>
+
+<!-- SESSIONS ALL -->
+<div id="s-sessions" class="screen">
+  <div class="topbar"><div class="topbar-title">Сессии</div></div>
+  <div class="pp"><div id="asl"></div></div>
+</div>
+
+<!-- SESSION DETAIL -->
+<div id="s-sessdet" class="screen">
+  <div class="topbar"><div class="topbar-back" onclick="window.goBack()" class="topbar-back" onclick="window.goBack()" style="color:#2c2416;border-color:#e0d8ce">←</div><div class="topbar-title">Сессия</div><div style="width:36px"></div></div>
+  <div class="pp" id="sdc"></div>
+</div>
+
+<!-- DIAGNOSTIC -->
+<div id="s-diag" class="screen" style="padding-bottom:0">
+  <div class="topbar" id="main-topbar" style="background:rgba(44,36,22,.95);border-bottom-color:#3d2f1a">
+    <div class="topbar-back" onclick="window.goBack()" style="border-color:rgba(255,255,255,.2);color:#fff" onclick="window.exitDiag()">←</div>
+    <div class="topbar-title" style="color:#fff">Диагностика</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="dh">
+    <div class="dcn" id="dcn"></div>
+    <div class="dcs" id="dcs"></div>
+    <div class="dprog" id="dprog"></div>
+  </div>
+  <div class="db">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="dsl"></div>
+    <div class="dq" id="dq"></div>
+    <div class="card" id="card-flip-area" onclick="window.flipCard()">
+      <div class="cv" id="dcv"><div style="text-align:center;color:rgba(255,255,255,.8)"><div style="font-size:40px;margin-bottom:8px">🃏</div><div style="font-size:13px">Нажмите чтобы открыть карту</div></div></div>
+      <div class="cdesc" id="dcd" style="display:none!important"><div class="cdt" id="dct"></div><div class="cds" id="dcs2"></div></div>
+    </div>
+    <textarea class="na" id="dn" placeholder="Заметки специалиста..."></textarea>
+    <div class="dnav">
+      <button class="bo" id="dpb" style="display:none">← Назад</button>
+      <button class="bf" id="dnb" style="flex:1">Далее →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIAG RESULT -->
+<div id="s-result" class="screen">
+  <div class="topbar"><div class="topbar-back" onclick="showS('s-profile')">←</div><div class="topbar-title">Итог диагностики</div><div style="width:36px"></div></div>
+  <div class="pp">
+    <div class="sumcard"><div class="sumt" id="rcn"></div><div class="suma" id="ra"></div><div class="sumrl">Рекомендации</div><div id="rr"></div></div>
+    <div class="fc"><div class="fl3">Ключевой фокус</div><div class="ft" id="rf"></div></div>
+    <div class="sec-title" style="margin-bottom:16px">Карты сессии</div>
+    <div id="rc"></div>
+    <button class="bf" style="width:100%;margin-top:16px" id="btn-save-result" onclick="window.saveResult()">Сохранить как сессию</button>
+  </div>
+</div>
+
+<!-- PROFILE PAGE -->
+<div id="s-ppage" class="screen">
+  <div class="topbar"><div class="topbar-title">Профиль</div></div>
+  <div class="pp">
+    <div style="text-align:center;padding:32px 0">
+      <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;color:#fff">✦</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:26px" id="ppn"></div>
+      <div style="color:var(--text2);font-size:13px;margin-top:4px">Специалист · Проводник</div>
+    </div>
+    <div class="stats"><div class="stat"><div class="stat-n" id="psc">0</div><div class="stat-l">Клиентов</div></div><div class="stat"><div class="stat-n" id="pss">0</div><div class="stat-l">Сессий</div></div></div>
+    <div style="background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:16px;text-align:center">
+      <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Ваш код для клиентов</div>
+      <div id="specialist-code" style="font-size:32px;font-weight:700;letter-spacing:6px;color:var(--accent);font-family:'Cormorant Garamond',serif">—</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px">Дайте этот код клиенту при регистрации</div>
+    </div>
+    <button class="bo" style="width:100%" class="bo" onclick="window.logout()">Выйти</button>
+  </div>
+</div>
+
+<!-- CLIENT VIEW -->
+<div id="s-cv" class="screen">
+  <div class="cvh"><div style="font-size:32px;margin-bottom:8px">🌿</div><div class="cvn" id="cvn"></div><div style="font-size:13px;opacity:.7">Мой кабинет</div></div>
+  <div class="pp">
+    <button class="bf" style="width:100%;margin-bottom:20px" onclick="window.startClientDiag()">▶ Пройти диагностику</button>
+    <div class="sec-title" style="margin-bottom:16px">Мои сессии</div><div id="cvs"></div>
+    <div class="sec-title" style="margin:20px 0 16px">Рекомендации</div><div id="cvr"></div>
+  </div>
+  <div style="padding:0 20px 40px"><button class="bo" style="width:100%" class="bo" onclick="window.logout()">Выйти</button></div>
+</div>
+
+<!-- MODAL: NEW CLIENT -->
+<div class="mo" id="m-nc">
+  <div class="modal">
+    <div class="mh"></div><div class="mt">Новый клиент</div>
+    <div class="ff"><label class="fl2">ФИО *</label><input class="finp" id="ncn" type="text" placeholder="Иванова Мария Петровна"></div>
+    <div class="ff"><label class="fl2">Дата рождения</label><input class="finp" id="ncb" type="date"></div>
+    <div class="ff"><label class="fl2">Контакты</label><input class="finp" id="ncc" type="text" placeholder="Telegram, телефон..."></div>
+    <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="ncr" placeholder="С чем пришёл клиент..."></textarea></div>
+    <div class="ff"><label class="fl2">Статус</label><select class="fsel" id="ncs"><option value="new">Новый</option><option value="active">Активный</option><option value="done">Завершён</option></select></div>
+    <button class="bf" style="width:100%;margin-top:8px" id="btn-save-nc" onclick="window.saveNC()">Создать карточку</button>
+    <button class="bo" style="width:100%;margin-top:10px" id="btn-close-nc" onclick="window.closeM('m-nc')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: NEW SESSION -->
+<div class="mo" id="m-ns">
+  <div class="modal">
+    <div class="mh"></div><div class="mt">Новая сессия</div>
+    <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option><option value="game">Игра</option></select></div>
+    <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="nsr" placeholder="Что беспокоит..."></textarea></div>
+    <div class="ff"><label class="fl2">Заметки</label><textarea class="fta" id="nsn" placeholder="Наблюдения..."></textarea></div>
+    <div class="ff"><label class="fl2">Инсайты</label><textarea class="fta" id="nsi" placeholder="Ключевые инсайты..."></textarea></div>
+    <div class="ff"><label class="fl2">Рекомендации</label><textarea class="fta" id="nsa" placeholder="Что делать между встречами..."></textarea></div>
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1"><label class="fl2">До (1-10)</label><input class="finp" id="nsb" type="number" min="1" max="10"></div>
+      <div style="flex:1"><label class="fl2">После (1-10)</label><input class="finp" id="nsa2" type="number" min="1" max="10"></div>
+    </div>
+    <div class="ff"><label class="fl2">Сумма оплаты (₽)</label><input class="finp" id="nspay" type="number" placeholder="0" min="0"></div>
+    <button class="bf" style="width:100%" id="btn-save-ns" onclick="window.saveNS()">Сохранить</button>
+    <button class="bo" style="width:100%;margin-top:10px" id="btn-close-ns" onclick="window.closeM('m-ns')">Отмена</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bnav" id="bnav" style="display:none">
+  <button class="ni active" id="nav-dash" onclick="window.navTo('dash',this)"><span class="ni-icon">🏠</span><span class="ni-label">Главная</span></button>
+  <button class="ni" id="nav-clients" onclick="window.navTo('clients',this)"><span class="ni-icon">👥</span><span class="ni-label">Клиенты</span></button>
+  <button class="ni" id="nav-sessions" onclick="window.navTo('sessions',this)"><span class="ni-icon">📋</span><span class="ni-label">Сессии</span></button>
+  <button class="ni" id="nav-profile" onclick="window.navTo('profile',this)"><span class="ni-icon">👤</span><span class="ni-label">Профиль</span></button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<!-- Firebase Compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDvthodL2Aql1qxSSM5xSXSqkDURb8_KyE",
+  authDomain: "kabinet-provodnika.firebaseapp.com",
+  projectId: "kabinet-provodnika",
+  storageBucket: "kabinet-provodnika.firebasestorage.app",
+  messagingSenderId: "874847507554",
+  appId: "1:874847507554:web:a4f690bb9d21c55479ed3b"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+
+const DECKS={
+momenty:[
+{d:"Женщина стоит у края обрыва и смотрит вдаль на горизонт"},{d:"Двое детей играют под дождём, смеясь и брызгаясь"},{d:"Старик кормит голубей на скамейке в парке"},{d:"Молодая пара наблюдает закат с балкона"},{d:"Ребёнок впервые держит котёнка на руках"},{d:"Женщина танцует одна на кухне под музыку"},{d:"Мужчина стоит под проливным дождём с поднятым лицом"},{d:"Бабушка и внучка вместе пекут пироги"},{d:"Человек сидит у костра в лесу, завёрнутый в плед"},{d:"Девочка пускает кораблики в луже после дождя"},{d:"Мужчина стоит на вершине горы, раскинув руки"},{d:"Пара идёт по осенней аллее, держась за руки"},{d:"Женщина у окна с книгой и чаем, за окном снег"},{d:"Дети запускают воздушных змеев в поле"},{d:"Человек лежит в траве и смотрит в облака"},{d:"Встреча старых друзей после долгой разлуки — объятия"},{d:"Ребёнок делает первые шаги, тянется к маме"},{d:"Рыбак на рассвете, туман над водой, тишина"},{d:"Семья собирается за большим столом на праздник"},{d:"Художник смотрит на готовую картину — первый взгляд"},{d:"Женщина распускает волосы и вздыхает с облегчением"},{d:"Мужчина читает письмо и улыбается"},{d:"Пара под одним зонтом в дождь — прижались друг к другу"},{d:"Девочка кружится в поле одуванчиков"},{d:"Мать обнимает взрослого сына, он наклоняется к ней"},{d:"Человек входит в новый дом с ключом в руке"},{d:"Женщина плачет от радости, держа что-то важное"},{d:"Мужчина и женщина смеются до слёз за ужином"},{d:"Ребёнок бежит навстречу вернувшемуся папе"},{d:"Человек сидит один на берегу ночью и смотрит на звёзды"},{d:"Подруги шепчутся и смеются над кофе"},{d:"Мужчина учит дочь кататься на велосипеде"},{d:"Старая пара сидит рядом молча, держась за руки"},{d:"Человек стоит перед зеркалом и видит себя сильным"},{d:"Женщина наблюдает за первым снегом из окна с улыбкой"},{d:"Группа людей запускает небесные фонарики"},{d:"Мужчина сидит в тишине библиотеки с книгой"},{d:"Ребёнок рисует большую картину на полу"},{d:"Путешественник выходит из поезда в незнакомом городе"},{d:"Женщина встречает рассвет на берегу моря"},{d:"Два человека долго разговаривают ночью на кухне"},{d:"Мужчина открывает глаза после медитации — покой на лице"},{d:"Девочка прячется под одеялом с фонариком и книгой"},{d:"Человек несёт охапку полевых цветов домой"},{d:"Мама целует ребёнка в лоб перед сном"},{d:"Мужчина помогает незнакомцу поднять упавшие вещи"},{d:"Женщина стоит на пороге и ждёт кого-то важного"},{d:"Пара танцует медленный танец на кухне под радио"},{d:"Человек кормит уток у пруда в осеннем парке"},{d:"Ребёнок дарит цветок незнакомой бабушке"}
+],
+resurs:[
+{d:"Человек медитирует у открытого окна с первыми лучами солнца"},{d:"Женщина готовит красивый здоровый завтрак с любовью"},{d:"Мужчина бежит по парку — лёгкость и сила в каждом шаге"},{d:"Женщина занимается йогой на рассвете у воды"},{d:"Человек рисует акварелью — полное погружение в творчество"},{d:"Мужчина работает руками с деревом в мастерской"},{d:"Женщина читает книгу в тишине, полностью расслабленная"},{d:"Человек принимает ванну с лепестками и свечами"},{d:"Женщина поёт в полный голос дома, одна"},{d:"Пара готовит вместе, смеётся на кухне"},{d:"Человек обнимает дерево в лесу и чувствует его силу"},{d:"Женщина вяжет под тёплым пледом — медитация через руки"},{d:"Мужчина плавает в море — полная свобода тела"},{d:"Человек собирает грибы в лесу — контакт с природой"},{d:"Женщина ухаживает за садом, руки в земле"},{d:"Человек пишет в дневник при свечах — честный разговор с собой"},{d:"Мужчина играет на гитаре для себя"},{d:"Женщина практикует дыхательные упражнения на берегу"},{d:"Человек танцует свободно под любимую музыку"},{d:"Мужчина занимается спортом — выброс энергии и сила"},{d:"Женщина делает массаж рук себе — самозабота"},{d:"Человек варит чай по ритуалу — медленно и осознанно"},{d:"Мужчина смотрит любимый фильм в полном одиночестве"},{d:"Женщина обустраивает пространство цветами и светом"},{d:"Человек гуляет босиком по траве на рассвете"},{d:"Женщина поливает растения и разговаривает с ними"},{d:"Мужчина занимается скалолазанием — преодоление и кайф"},{d:"Человек наблюдает за огнём в камине"},{d:"Женщина делает арт-терапию — мажет краски руками"},{d:"Мужчина занимается цигун на свежем воздухе"},{d:"Человек делает уборку осознанно — как медитацию"},{d:"Женщина пьёт утренний кофе в тишине без телефона"},{d:"Мужчина лепит из глины — творческая свобода"},{d:"Человек занимается фотографией природы — присутствие"},{d:"Женщина принимает солнечные ванны лёжа в траве"},{d:"Мужчина плавает в бассейне рано утром — ритуал силы"},{d:"Человек читает вслух стихи себе"},{d:"Женщина делает маску для лица и улыбается отражению"},{d:"Мужчина идёт в поход — горы и свобода"},{d:"Человек занимается каллиграфией — медленность и красота"},{d:"Женщина готовит суп из свежих овощей — любовь через еду"},{d:"Мужчина занимается растяжкой после долгого дня"},{d:"Человек смотрит на звёздное небо в телескоп"},{d:"Женщина собирает гербарий и засушивает цветы"},{d:"Мужчина занимается восстановительным дыханием"},{d:"Человек рисует мандалы для успокоения ума"},{d:"Женщина слушает классическую музыку с закрытыми глазами"},{d:"Мужчина занимается плаванием в открытой воде"},{d:"Человек выполняет ритуал благодарности перед сном"},{d:"Женщина создаёт особое пространство для себя"}
+],
+strahi:[
+{d:"Человек стоит у закрытой двери и не решается постучать"},{d:"Женщина прячет лицо в ладонях — непереносимый стыд"},{d:"Мужчина смотрит в пустой кошелёк — страх нехватки"},{d:"Человек тонет в тёмной воде, тянется к поверхности"},{d:"Женщина стоит одна посреди толпы — одиночество в людях"},{d:"Мужчина в маске — страшно быть настоящим"},{d:"Человек смотрит в зеркало и не узнаёт себя"},{d:"Женщина стоит у пропасти — нельзя ни уйти, ни прыгнуть"},{d:"Мужчина держит много шаров — страх потерять контроль"},{d:"Ребёнок внутри взрослого прячется за занавеской"},{d:"Человек в клетке из золота — страх свободы"},{d:"Женщина смотрит на часы — время уходит, страх опоздать"},{d:"Мужчина несёт на плечах огромный камень"},{d:"Человек бежит, но стоит на месте — страх двигаться"},{d:"Женщина говорит, но голоса не слышно"},{d:"Мужчина стоит перед большой аудиторией — паралич"},{d:"Человек в темноте, не видит выхода"},{d:"Женщина оглядывается назад — страх прошлого"},{d:"Мужчина держит цветок, который увядает — страх потери"},{d:"Человек на развилке дорог — страх выбора"},{d:"Женщина у разбитого зеркала — страх несовершенства"},{d:"Мужчина за стеклом смотрит на чужой праздник"},{d:"Человек закрывает уши — страх правды"},{d:"Женщина связана нитями — страх быть собой"},{d:"Мужчина боится открыть письмо — страх отвержения"},{d:"Человек идёт по узкому мосту над пропастью"},{d:"Женщина смотрит на пустую колыбель"},{d:"Мужчина в пустой квартире — страх пустоты внутри"},{d:"Человек не может выговорить важное слово"},{d:"Женщина видит своё отражение — оно другое"},{d:"Мужчина прячет руки за спиной — страх прикосновения"},{d:"Человек смотрит вниз с высоты — страх жизни"},{d:"Женщина останавливается перед выходом — страх нового"},{d:"Мужчина смотрит как уходит поезд — страх упустить"},{d:"Человек лежит в темноте без сил — страх действовать"},{d:"Женщина стоит у гроба — страх конца"},{d:"Мужчина разрывается между двумя людьми"},{d:"Человек прячется под одеялом днём — страх мира"},{d:"Женщина держит сердце в руках, боится отдать"},{d:"Мужчина видит себя маленьким в огромном мире"},{d:"Человек стоит у двери чужого счастья"},{d:"Женщина смотрит на свои руки — страх ошибки"},{d:"Мужчина закрывает глаза перед прыжком"},{d:"Человек смотрит в будущее — туман и неизвестность"},{d:"Женщина стоит спиной к близкому — страх близости"},{d:"Мужчина несёт две маски — страх кем быть"},{d:"Человек в зале суда — страх осуждения"},{d:"Женщина на краю толпы — страх не принадлежать"},{d:"Мужчина смотрит на разрушенный дом — страх потерять всё"},{d:"Человек снимает маску и закрывает глаза — страх быть увиденным"}
+]};
+const CK={
+muladhara:{n:'Муладхара',s:'1 чакра · Корневая · Безопасность',q:['Что даёт мне чувство опоры прямо сейчас?','Где в теле я ощущаю дискомфорт или напряжение?','Где в жизни я чувствую нестабильность?','Что поможет мне чувствовать себя «как дома»?','Что я унаследовал(а) из Рода в плане безопасности?','Что поможет ощущать себя в безопасности?','Как я отношусь к материальному миру?','Мой ресурс для заземления — где он?'],do:['strahi','momenty','momenty','momenty','momenty','resurs','momenty','resurs']},
+svadhisthana:{n:'Свадхистхана',s:'2 чакра · Сакральная · Чувства',q:['Что приносит мне радость прямо сейчас?','Каково моё отношение к телу и его желаниям?','Как я выражаю свои чувства?','Я и моя сексуальность — что здесь живёт?','Какие запреты или табу мешают мне?','Что раскроет во мне поток творчества?','Где я блокирую удовольствие?','Что поможет наслаждаться собой и жизнью?'],do:['resurs','momenty','momenty','momenty','strahi','resurs','strahi','resurs']},
+manipura:{n:'Манипура',s:'3 чакра · Солнечное сплетение · Сила',q:['Где я чувствую свою силу?','Что подавляет мой внутренний огонь?','Что лишает меня уверенности?','Какая часть меня хочет действовать?','Как я ставлю и защищаю свои границы?','Что поможет мне заявить о себе?','Чего я боюсь в проявленности?','Мой источник воли и свободы — где он?'],do:['momenty','strahi','momenty','momenty','momenty','resurs','strahi','resurs']},
+anahata:{n:'Анахата',s:'4 чакра · Сердечная · Любовь',q:['Как я ощущаю любовь в своей жизни?','Где я могу проявить сострадание к себе?','Что мешает мне принимать любовь?','Какие отношения требуют исцеления?','Как я закрываю своё сердце?','Как я могу вернуть себе мягкость?','Какая боль живёт в сердце до сих пор?','Что открывает моё сердце для жизни?'],do:['momenty','strahi','momenty','momenty','momenty','resurs','strahi','resurs']},
+vishuddha:{n:'Вишудха',s:'5 чакра · Горловая · Самовыражение',q:['Что я боюсь сказать вслух?','Где я теряю силу через молчание или крик?','Где я подавляю голос внутри себя?','Что во мне просится быть выраженным?','Что мешает мне быть услышанным(ой)?','Как я могу говорить с любовью и ясностью?','Что я избегаю проговорить?','Какой мой подлинный голос в этом мире?'],do:['momenty','strahi','momenty','momenty','strahi','resurs','momenty','resurs']},
+ajna:{n:'Аджна',s:'6 чакра · Третий глаз · Интуиция',q:['Где я теряю связь с собой?','Какой мой внутренний образ будущего?','Что мешает мне доверять интуиции?','Что говорит мой внутренний голос?','Как я запутываю себя мыслями?','Как я могу вернуть себе внутреннюю мудрость?','Где мне нужна ясность прямо сейчас?','Что важно «увидеть», а не «понять»?'],do:['momenty','momenty','strahi','resurs','strahi','resurs','momenty','resurs']},
+sahasrara:{n:'Сахасрара',s:'7 чакра · Коронная · Духовность',q:['Где я чувствую отделённость от мира?','Что мешает слышать голос Души?','Что даёт мне ощущение внутреннего света?','Какую Истину я отвергаю?','Что мешает принять всё как есть?','Как я чувствую связь с Высшими силами?','Что отвлекает меня от внутренней тишины?','Какая подсказка приходит от Высших сил?'],do:['momenty','strahi','momenty','momenty','momenty','resurs','strahi','resurs']}};
+const CARD_IMGS={momenty:["https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030791/2_isqga8.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030793/4_th5gts.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030791/7_n3exaj.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030790/5_eppnfp.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030790/6_e6luwu.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030789/3_bmf10n.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030789/8_oromso.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030788/15_ez0lzs.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030788/9_o2sdmg.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030787/10_rikumx.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030787/11_fal0fo.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030787/12_gvyg6i.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030786/19_rqbihn.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030786/17_yibiws.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030786/13_uv9a8v.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030786/14_ofhrbh.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030785/16_kt3e86.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/18_lnngoc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/20_gzjukv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/30_q0klzb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/21_usbzmt.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/27_bueota.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030784/22_b1gl7q.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030783/25_zuckfn.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030783/26_lhzq7m.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030783/24_vb3l58.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030783/23_yrfrrl.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030782/28_r4i0xd.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030781/29_td8xe4.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030781/32_aqplld.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030781/34_uxhooi.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030781/45_qzuoft.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030781/31_cnqkzq.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030780/36_gdbkuf.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030780/41_xdgean.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030780/33_etf80k.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030779/37_fxa2l4.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030779/35_gfr2zv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030778/72_vypj2y.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030778/38_laz7jb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030777/39_hbb8pk.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030777/42_qst7xc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030777/40_xwct2j.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030776/43_ekuodx.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030776/44_x6xki5.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030776/51_dtttuv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030775/47_wa1qqb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030775/46_ytdoz0.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030775/48_dxaqir.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777030775/50_angk19.png"],resurs:["https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/50_uul7tv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/48_oqfdiz.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/51_krqidj.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/49_sr1vdz.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031747/47_m182vb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031747/46_efdexb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031747/45_a55baq.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031748/44_pr2lcb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031748/41_ssbwqw.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031748/42_off3zc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031748/40_rtx6du.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031749/38_c4rr4q.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031749/35_kvg0aw.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031749/37_btjpoe.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031750/39_yf32yi.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031751/32_wu37zw.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031751/36_zlylvj.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031751/31_yrnceo.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031751/34_s3n39w.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031752/29_eni6ad.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031752/28_seihjn.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031752/27_eudzrh.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031752/30_rqwgbj.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031752/26_figehq.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031753/25_mcouby.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031754/22_m0ewds.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031754/33_yzuawo.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031755/23_rdbodv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031755/21_u91zop.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031755/20_lmjwcr.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031756/19_fb5jix.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031756/18_rqy3pp.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031756/17_lpp5s0.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031756/16_phuajh.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031757/15_y3ybcz.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031757/14_naf7kw.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031758/12_szab5z.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031758/11_djng07.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031759/13_eihzha.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031759/10_umbbp5.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031759/8_y37wz5.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031761/5_ek70hv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031761/9_ukzace.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031761/3_xfxisy.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031762/4_zc8oxd.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031762/2_loea4q.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031762/6_ybmygl.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031762/7_rfw6uu.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/50_uul7tv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031746/48_oqfdiz.png"],strahi:["https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031789/50_utngsi.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031789/49_k2xm5i.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031789/48_ca9fi1.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031790/47_lmq5ay.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031790/51_cw4j6j.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031790/45_ljkg4v.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031790/44_nhhul6.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031791/46_wx4hgr.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031791/42_qhro39.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031793/40_xiby6q.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031793/43_mhapqe.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031793/38_iheos1.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031794/41_tej3p8.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031795/36_phcgdc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031796/35_kdtwcn.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031796/37_vbtqwa.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031796/39_q6mj02.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031797/33_n6rsdn.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031797/32_flwkwv.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031797/34_jcm0es.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031798/30_pgsq98.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031799/28_peirxe.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031799/31_qpyta5.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031799/29_f2adtm.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031800/26_bu48gi.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031801/27_ns0agh.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031801/25_gth5nb.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031801/23_b9x3mo.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031802/22_oha3uj.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031802/21_crg6ea.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031802/24_yoec70.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031803/19_dcvpji.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031803/18_gbckxt.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031804/20_htwg0t.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031804/16_ifk88n.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031804/15_ivgavf.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031805/13_fex4ji.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031805/17_jxxo1y.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031806/11_vrdaqc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031807/12_ahhyqx.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031807/9_m8lope.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031807/8_aej3s5.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031808/14_zeiobo.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031808/10_cg6uyl.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031808/6_h5xki4.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031809/7_qcpwch.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031810/3_tqb6gu.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031810/5_qofnqc.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031811/4_jkqwwg.png","https://res.cloudinary.com/djqgj6rsw/image/upload/v1777031812/2_rnxhlf.png"]};
+
+const TH={momenty:{g:'linear-gradient(135deg,#7b5ea7,#9d4edd,#c77dff)'},resurs:{g:'linear-gradient(135deg,#52b788,#40916c,#74c69d)'},strahi:{g:'linear-gradient(135deg,#2c2416,#5c3d1e,#8b5e3c)'}};
+
+// ===== STATE =====
+let CU=null, CID=null, diagState={}, screenHistory=[];
+let clients=[], sessions=[];
+let unsubClients=null, unsubSessions=null;
+let authMode='login', authRole='specialist';
+
+// ===== HELPERS =====
+const g = id => document.getElementById(id);
+const toast = msg => {
+  const t=g('toast'); if(!t) return;
+  t.textContent=msg; t.className='toast show';
+  setTimeout(()=>t.className='toast',2500);
+};
+function showErr(msg) {
+  const el=g('auth-error'); if(!el) return;
+  if(!msg){el.style.display='none';return;}
+  el.textContent=msg; el.style.display='block';
+  el.style.color=msg.includes('...')||msg.includes('Подключ')?'#52b788':'#ff8a80';
+  el.style.background=msg.includes('...')||msg.includes('Подключ')?'rgba(82,183,136,.15)':'rgba(255,100,80,.12)';
+}
+
+// ===== AUTH =====
+function setRole(r) {
+  authRole=r;
+  // Update tab visual
+  const ts=g('tab-specialist'), tc=g('tab-client');
+  if(ts) ts.classList.toggle('active', r==='specialist');
+  if(tc) tc.classList.toggle('active', r==='client');
+  // Show/hide specialist code for client registration
+  const sc=g('auth-specialist-code-row');
+  if(sc) sc.style.display=(authMode==='register'&&r==='client')?'block':'none';
+  // Update hint text
+  const hint=g('auth-role-hint');
+  if(hint) {
+    if(r==='client') hint.textContent='Для входа вам нужен код специалиста при регистрации';
+    else hint.textContent='';
+  }
+}
+
+function setAuthMode(mode) {
+  authMode=mode;
+  const isReg=mode==='register';
+  const nr=g('auth-name-row'); if(nr) nr.style.display=isReg?'block':'none';
+  const sc=g('auth-specialist-code-row'); if(sc) sc.style.display=(isReg&&authRole==='client')?'block':'none';
+  const btn=g('auth-btn'); if(btn) btn.textContent=isReg?'Зарегистрироваться':'Войти';
+  const bl=g('btn-login-mode'), br=g('btn-reg-mode');
+  if(bl&&br){
+    bl.style.opacity=isReg?'0.6':'1'; bl.style.fontWeight=isReg?'400':'700';
+    br.style.opacity=isReg?'1':'0.6'; br.style.fontWeight=isReg?'700':'400';
+  }
+}
+
+async function doLogin() {
+  showErr('Подключаемся...');
+  const email=(g('login-name-input').value||'').trim();
+  const pass=g('login-pass-input').value||'';
+  const name=(g('auth-name')?.value||'').trim();
+  const code=(g('auth-spec-code')?.value||'').trim().toUpperCase();
+
+  if(!email||!pass){showErr('Введите email и пароль');return;}
+  if(authMode==='register'&&!name){showErr('Введите ваше имя');return;}
+  if(authMode==='register'&&authRole==='client'&&!code){showErr('Введите код специалиста');return;}
+
+  const btn=g('auth-btn');
+  if(btn){btn.disabled=true; btn.textContent='⏳...';}
+
+  try {
+    if(authMode==='register') {
+      let specialistUid=null;
+      if(authRole==='client') {
+        showErr('Ищем специалиста...');
+        const snap=await db.collection('users').where('code','==',code).where('role','==','specialist').get();
+        if(snap.empty){showErr('Специалист с кодом '+code+' не найден');if(btn){btn.disabled=false;btn.textContent='Зарегистрироваться';}return;}
+        specialistUid=snap.docs[0].id;
+      }
+      showErr('Создаём аккаунт...');
+      const cred=await auth.createUserWithEmailAndPassword(email,pass);
+      await cred.user.updateProfile({displayName:name});
+      const userData={name,email,role:authRole,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+      if(authRole==='specialist'){
+        userData.code=Math.random().toString(36).substring(2,8).toUpperCase();
+      } else {
+        userData.specialistUid=specialistUid;
+        const clientRef=db.collection('clients').doc();
+        await clientRef.set({fullName:name,email,specialistId:specialistUid,clientUid:cred.user.uid,status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        userData.clientDocId=clientRef.id;
+      }
+      await db.collection('users').doc(cred.user.uid).set(userData);
+    } else {
+      showErr('Входим...');
+      await auth.signInWithEmailAndPassword(email,pass);
+    }
+  } catch(e) {
+    console.error(e);
+    let msg='Ошибка';
+    if(e.code==='auth/email-already-in-use') msg='Email уже зарегистрирован';
+    else if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') msg='Неверный email или пароль';
+    else if(e.code==='auth/user-not-found') msg='Пользователь не найден';
+    else if(e.code==='auth/weak-password') msg='Пароль минимум 6 символов';
+    else if(e.code==='auth/invalid-email') msg='Неверный формат email';
+    else if(e.code==='auth/network-request-failed') msg='Нет соединения с интернетом';
+    else msg=e.code||e.message;
+    showErr(msg);
+    if(btn){btn.disabled=false;btn.textContent=authMode==='register'?'Зарегистрироваться':'Войти';}
+  }
+}
+
+function logout() {
+  stopListeners();
+  auth.signOut();
+}
+
+// ===== FIREBASE AUTH LISTENER =====
+auth.onAuthStateChanged(async user => {
+  if(user) {
+    try {
+      const uDoc=await db.collection('users').doc(user.uid).get();
+      if(uDoc.exists) {
+        CU={uid:user.uid,email:user.email,...uDoc.data()};
+      } else {
+        // Profile missing - create specialist profile automatically
+        const code=Math.random().toString(36).substring(2,8).toUpperCase();
+        const userData={
+          name:user.displayName||user.email.split('@')[0],
+          email:user.email, role:'specialist', code,
+          createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await db.collection('users').doc(user.uid).set(userData);
+        CU={uid:user.uid,...userData};
+      }
+      if(CU.role==='specialist') {
+        // Force hide login screen
+        const slogin=g('s-login'); if(slogin) slogin.classList.remove('active');
+        const bnav=g('bnav'); if(bnav) bnav.style.display='flex';
+        showS('s-dash'); startSpecialistListeners(); rDash();
+      } else {
+        const slogin=g('s-login'); if(slogin) slogin.classList.remove('active');
+        showCV(user.uid); startClientListeners(user.uid);
+      }
+    } catch(e) {
+      console.error('Auth error:',e);
+      showS('s-login');
+      showErr('Ошибка: '+e.message);
+    }
+  } else {
+    CU=null; stopListeners();
+    g('bnav').style.display='none';
+    showS('s-login');
+  }
+});
+
+// ===== REALTIME LISTENERS =====
+function startSpecialistListeners() {
+  stopListeners();
+  unsubClients=db.collection('clients').where('specialistId','==',CU.uid)
+    .onSnapshot(snap=>{
+      clients=snap.docs.map(d=>({id:d.id,...d.data()}));
+      const act=document.querySelector('.screen.active');
+      if(act){
+        if(act.id==='s-dash') rDash();
+        if(act.id==='s-clients') rClients();
+        if(act.id==='s-profile'&&CID) rPSess(CID);
+      }
+    });
+  unsubSessions=db.collection('sessions').where('specialistId','==',CU.uid)
+    .onSnapshot(snap=>{
+      sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+      const act=document.querySelector('.screen.active');
+      if(act){
+        if(act.id==='s-dash') rDash();
+        if(act.id==='s-sessions') rAllSess();
+        if(act.id==='s-profile'&&CID) rPSess(CID);
+      }
+    });
+}
+
+function startClientListeners(uid) {
+  stopListeners();
+  unsubSessions=db.collection('sessions').where('clientUid','==',uid)
+    .onSnapshot(snap=>{
+      sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+      refreshCV(uid);
+    });
+}
+
+function stopListeners() {
+  if(unsubClients){unsubClients();unsubClients=null;}
+  if(unsubSessions){unsubSessions();unsubSessions=null;}
+}
+
+// ===== NAVIGATION =====
+function showS(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=g(id); if(el) el.classList.add('active');
+  const noNav=['s-login','s-diag','s-result','s-cv'];
+  g('bnav').style.display=(noNav.includes(id)||!CU)?'none':'flex';
+  window.scrollTo(0,0);
+}
+function navTo(p,btn) {
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  screenHistory=[];
+  if(p==='dash'){showS('s-dash');rDash();}
+  else if(p==='clients'){showS('s-clients');rClients();}
+  else if(p==='sessions'){showS('s-sessions');rAllSess();}
+  else if(p==='profile'){showS('s-ppage');rProf();}
+}
+function goBack() {
+  if(screenHistory.length) showS(screenHistory.pop());
+  else showS('s-clients');
+}
+function openM(id){const el=g(id);if(el)el.classList.add('open');}
+function closeM(id){const el=g(id);if(el)el.classList.remove('open');}
+
+// ===== DASHBOARD =====
+function rDash() {
+  const h=new Date().getHours();
+  const gr=h<12?'Доброе утро':h<17?'Добрый день':'Добрый вечер';
+  const dg=g('dg'); if(dg) dg.textContent=gr+', '+(CU?.name||'');
+  const dd=g('dd2'); if(dd) dd.textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  const sc=g('sc1'); if(sc) sc.textContent=clients.length;
+  const ss=g('ss1'); if(ss) ss.textContent=sessions.length;
+  const list=g('dcl'); if(!list) return;
+  const recent=[...clients].slice(-3).reverse();
+  list.innerHTML=recent.length?recent.map((c,i)=>ccHTML(c,i)).join(''):'<div class="empty"><div class="ei">🌱</div><div class="et">Клиентов пока нет</div></div>';
+}
+
+function ccHTML(c,idx) {
+  const ini=c.fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const sm={new:'sn',active:'sa',done:'sd'},sl={new:'Новый',active:'Активный',done:'Завершён'};
+  const cSess=sessions.filter(s=>s.clientId===c.id);
+  const paid=cSess.reduce((sum,s)=>sum+(parseFloat(s.payment)||0),0);
+  return `<div class="cc" onclick="window.openCP('${c.id}')">
+    <div class="cav">${ini}</div>
+    <div class="ci">
+      <div style="font-size:11px;color:var(--text2)">#${(idx||0)+1}</div>
+      <div class="cn">${c.fullName}</div>
+      ${c.contacts?`<div style="font-size:11px;color:var(--text2)">${c.contacts}</div>`:''}
+      <div style="font-size:11px;color:var(--text2)">${cSess.length} сесс.${paid?' · '+paid+'₽':''}</div>
+    </div>
+    <span class="sb ${sm[c.status]||'sn'}">${sl[c.status]||'Новый'}</span>
+  </div>`;
+}
+
+// ===== CLIENTS =====
+function rClients(filter='') {
+  const list=g('cl'); if(!list) return;
+  const x=clients.filter(c=>!filter||c.fullName.toLowerCase().includes(filter.toLowerCase()));
+  list.innerHTML=x.length?x.map((c,i)=>ccHTML(c,i)).join(''):'<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
+}
+function filterC(v){rClients(v);}
+
+async function saveNC() {
+  const fn=(g('ncn')?.value||'').trim();
+  if(!fn){toast('Введите ФИО');return;}
+  try {
+    await db.collection('clients').add({
+      fullName:fn, birthDate:g('ncb')?.value||'',
+      contacts:g('ncc')?.value||'', mainRequest:g('ncr')?.value||'',
+      status:g('ncs')?.value||'new', specialistId:CU.uid,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeM('m-nc');
+    ['ncn','ncb','ncc','ncr'].forEach(id=>{const e=g(id);if(e)e.value='';});
+    toast('Клиент создан ✦');
+  } catch(e){toast('Ошибка: '+e.message);}
+}
+
+// ===== CLIENT PROFILE =====
+function openCP(clientId) {
+  CID=clientId;
+  const cl=clients.find(c=>c.id===clientId); if(!cl) return;
+  screenHistory.push(document.querySelector('.screen.active')?.id||'s-clients');
+  showS('s-profile');
+  const ini=cl.fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const pav=g('pav'); if(pav) pav.textContent=ini;
+  const pn=g('pn'); if(pn) pn.textContent=cl.fullName;
+  const pm=g('pm'); if(pm) pm.textContent=(cl.birthDate||'')+(cl.contacts?' · '+cl.contacts:'');
+  const pir=g('pir');
+  if(pir) pir.innerHTML=`
+    <div class="ir"><div class="il">Дата рождения</div><div class="iv">${cl.birthDate||'—'}</div></div>
+    <div class="ir"><div class="il">Контакты</div><div class="iv">${cl.contacts||'—'}</div></div>
+    <div class="ir"><div class="il">Запрос</div><div class="iv">${cl.mainRequest||'—'}</div></div>
+    <div class="ir"><div class="il">Статус</div><div class="iv">
+      <select onchange="window.updSt('${cl.id}',this.value)" style="border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-family:'Nunito',sans-serif;background:var(--bg)">
+        <option value="new" ${cl.status==='new'?'selected':''}>Новый</option>
+        <option value="active" ${cl.status==='active'?'selected':''}>Активный</option>
+        <option value="done" ${cl.status==='done'?'selected':''}>Завершён</option>
+      </select>
+    </div></div>
+    <div class="ir"><div class="il">Код для клиента</div><div class="iv" style="font-weight:700;color:var(--accent);letter-spacing:3px">${CU.code||'—'}</div></div>`;
+  const mli=g('mli'); if(mli) mli.value=cl.meetLink||'';
+  const mlo=g('mlo'); if(mlo) mlo.style.display=cl.meetLink?'flex':'none';
+  if(cl.birthDate){
+    const p=cl.birthDate.split('-');
+    const my=g('mx-y');const mm=g('mx-mo');const md=g('mx-d');
+    if(my)my.value=p[0]||'';if(mm)mm.value=p[1]||'';if(md)md.value=p[2]||'';
+  }
+  if(cl.matrix){
+    const m=cl.matrix;
+    ['sn','nm','pt','dd','mm'].forEach(f=>{const e=g('mx-'+f);if(e)e.value=m[f]||'';});
+    const d=g('mx-d');if(d)d.value=m.d||'';
+    const mo=g('mx-mo');if(mo)mo.value=m.mo||'';
+    const y=g('mx-y');if(y)y.value=m.y||'';
+    const mxm=g('mx-m');if(mxm)mxm.checked=m.im;
+    const mxj=g('mx-j');if(mxj)mxj.checked=!m.im;
+  }
+  rPSess(clientId);
+  swTabTo('ti');
+}
+
+function swTabTo(id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  const el=g(id);if(el)el.classList.add('active');
+  const idx=['ti','tm','ts'].indexOf(id);
+  const tabs=document.querySelectorAll('.tab');
+  if(tabs[idx])tabs[idx].classList.add('active');
+}
+function swTab(el,id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');const target=g(id);if(target)target.classList.add('active');
+}
+
+async function updSt(id,status) {
+  try{await db.collection('clients').doc(id).update({status});}catch(e){}
+}
+function saveML() {
+  const val=g('mli')?.value||'';
+  db.collection('clients').doc(CID).update({meetLink:val}).catch(()=>{});
+  const mlo=g('mlo');if(mlo)mlo.style.display=val?'flex':'none';
+  toast('Ссылка сохранена');
+}
+function openML(){const cl=clients.find(c=>c.id===CID);if(cl?.meetLink)window.open(cl.meetLink,'_blank');}
+
+function rPSess(clientId) {
+  const list=g('psl'); if(!list) return;
+  const sl=sessions.filter(s=>s.clientId===clientId).sort((a,b)=>{
+    const da=a.date?.toDate?a.date.toDate():new Date(a.date||0);
+    const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
+    return db2-da;
+  });
+  list.innerHTML=`<button class="bf" style="width:100%;margin-bottom:16px" onclick="window.openNewSess()">+ Новая сессия</button>`+
+    (sl.length?sl.map(s=>scHTML(s)).join(''):'<div class="empty"><div class="ei">📋</div><div class="et">Сессий пока нет</div></div>');
+}
+
+function dateStr(d) {
+  if(!d) return '';
+  const dt=d?.toDate?d.toDate():new Date(d);
+  return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+}
+
+function scHTML(s) {
+  const tm={diagnostic:'t-d',consultation:'t-c',game:'t-g'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
+  const b=parseInt(s.stateBefore)||0,a=parseInt(s.stateAfter)||0;
+  const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${s.payment}₽</span>`:'';
+  return `<div class="sc" onclick="window.openSD('${s.id}')">
+    <div class="sd2">${dateStr(s.date)}</div>
+    <span class="st ${tm[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
+    <div class="sr">${(s.request||'').slice(0,80)}${pay}</div>
+    ${b||a?`<div class="sbar"><span>До:${b}</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<b?'f':''}"></div>`).join('')}</div><span>→</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<a?'f':''}"></div>`).join('')}</div><span>После:${a}</span></div>`:''}
+  </div>`;
+}
+
+function openNewSess(){closeM('m-ns');setTimeout(()=>openM('m-ns'),50);}
+
+async function saveNS() {
+  if(!CID) return;
+  const cl=clients.find(c=>c.id===CID);
+  try {
+    await db.collection('sessions').add({
+      clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
+      date:firebase.firestore.FieldValue.serverTimestamp(),
+      type:g('nst')?.value||'consultation',
+      request:g('nsr')?.value||'', notes:g('nsn')?.value||'',
+      insights:g('nsi')?.value||'', actions:g('nsa')?.value||'',
+      stateBefore:g('nsb')?.value||'', stateAfter:g('nsa2')?.value||'',
+      payment:g('nspay')?.value||''
+    });
+    if(cl?.status==='new') await db.collection('clients').doc(CID).update({status:'active'});
+    closeM('m-ns');
+    ['nsr','nsn','nsi','nsa','nsb','nsa2','nspay'].forEach(id=>{const e=g(id);if(e)e.value='';});
+    toast('Сессия сохранена');
+  } catch(e){toast('Ошибка: '+e.message);}
+}
+
+// ===== ALL SESSIONS =====
+function rAllSess() {
+  const list=g('asl'); if(!list) return;
+  const sorted=[...sessions].sort((a,b)=>{
+    const da=a.date?.toDate?a.date.toDate():new Date(a.date||0);
+    const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
+    return db2-da;
+  });
+  list.innerHTML=sorted.length?sorted.map(s=>{
+    const cl=clients.find(c=>c.id===s.clientId);
+    return `<div style="font-size:12px;color:var(--text2);margin:16px 0 4px">${cl?.fullName||''}</div>${scHTML(s)}`;
+  }).join(''):'<div class="empty"><div class="ei">📋</div><div class="et">Сессий пока нет</div></div>';
+}
+
+function openSD(sid) {
+  const s=sessions.find(x=>x.id===sid); if(!s) return;
+  screenHistory.push(document.querySelector('.screen.active')?.id||'s-sessions');
+  showS('s-sessdet');
+  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
+  const cl=clients.find(c=>c.id===s.clientId);
+  const fld=(l,v)=>v?`<div class="ir" style="flex-direction:column;gap:6px"><div class="il">${l}</div><div class="iv" style="font-size:14px;line-height:1.6">${v}</div></div>`:'';
+  const sdc=g('sdc'); if(!sdc) return;
+  sdc.innerHTML=`
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;color:var(--text2)">${dateStr(s.date)}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:26px">${tl[s.type]||s.type}</div>
+      ${cl?`<div style="font-size:13px;color:var(--text2)">${cl.fullName}</div>`:''}
+      ${s.payment?`<div style="font-size:16px;font-weight:700;color:var(--accent)">${s.payment}₽</div>`:''}
+    </div>
+    ${fld('Запрос',s.request)}${fld('Заметки',s.notes)}${fld('Инсайты',s.insights)}${fld('Рекомендации',s.actions)}
+    ${s.stateBefore||s.stateAfter?`<div class="stat" style="margin-top:16px"><div style="display:flex;justify-content:space-around;text-align:center">
+      <div><div class="stat-n" style="font-size:32px">${s.stateBefore||'—'}</div><div class="stat-l">До</div></div>
+      <div style="font-size:24px;padding-top:12px">→</div>
+      <div><div class="stat-n" style="font-size:32px">${s.stateAfter||'—'}</div><div class="stat-l">После</div></div>
+    </div></div>`:''}`;
+}
+
+// ===== MATRIX =====
+// Correct letter map (same as original calculator)
+const lm={
+  'А':1,'Б':2,'В':3,'Г':4,'Д':5,'Е':6,'Ё':7,'Ж':8,'З':9,
+  'И':1,'Й':2,'К':3,'Л':4,'М':5,'Н':6,'О':7,'П':8,'Р':9,
+  'С':1,'Т':2,'У':3,'Ф':4,'Х':5,'Ц':6,'Ч':7,'Ш':8,'Щ':9,
+  'Ъ':1,'Ы':2,'Ь':3,'Э':4,'Ю':5,'Я':6,
+  'а':1,'б':2,'в':3,'г':4,'д':5,'е':6,'ё':7,'ж':8,'з':9,
+  'и':1,'й':2,'к':3,'л':4,'м':5,'н':6,'о':7,'п':8,'р':9,
+  'с':1,'т':2,'у':3,'ф':4,'х':5,'ц':6,'ч':7,'ш':8,'щ':9,
+  'ъ':1,'ы':2,'ь':3,'э':4,'ю':5,'я':6,
+  'A':1,'B':2,'C':3,'D':4,'E':5,'F':6,'G':7,'H':8,'I':9,
+  'J':1,'K':2,'L':3,'M':4,'N':5,'O':6,'P':7,'Q':8,'R':9,
+  'S':1,'T':2,'U':3,'V':4,'W':5,'X':6,'Y':7,'Z':8,
+  'a':1,'b':2,'c':3,'d':4,'e':5,'f':6,'g':7,'h':8,'i':9,
+  'j':1,'k':2,'l':3,'m':4,'n':5,'o':6,'p':7,'q':8,'r':9,
+  's':1,'t':2,'u':3,'v':4,'w':5,'x':6,'y':7,'z':8
+};
+const cn=n=>{n=parseInt(n);if(n<=22)return n;let s=String(n).split('').reduce((a,b)=>a+parseInt(b),0);return s>22?cn(s):s;};
+const cs=str=>{let s=str.split('').filter(c=>c!==' ').reduce((a,c)=>a+(lm[c]||0),0);return s>22?cn(s):s;};
+const mst=(id,v)=>{const e=g(id);if(e)e.textContent=v;};
+
+function calcMx() {
+  const sn=g('mx-sn')?.value||'',nm=g('mx-nm')?.value||'',pt=g('mx-pt')?.value||'';
+  const dd2=g('mx-dd')?.value||'',mm=g('mx-mm')?.value||'';
+  const d=g('mx-d')?.value||'',mo=g('mx-mo')?.value||'',y=g('mx-y')?.value||'';
+  const im=g('mx-m')?.checked;
+  if(!sn||!nm||!pt||!dd2||!mm||!d||!mo||!y){toast('Заполните все поля матрицы');return;}
+  // Exact formulas from original calculator
+  const n1=cn(parseInt(d));
+  const n2=cn(parseInt(mo));
+  const n3=cn(parseInt(y));
+  const n4=cn(n1+n2+n3);
+  const n5=cs(sn);
+  const n6=im?cs(pt):cs(dd2); // male=patronymic, female=dad surname
+  const n7=cs(nm);
+  const n8=cs(mm);
+  const n9=cn(n1+n2+n3+n4);
+  const n10=cn(n5+n6+n7+n8);
+  const n11=cn(n9+n5); const n12=cn(n11+n5);
+  const n13=cn(n9+n6); const n14=cn(n13+n6);
+  const n15=cn(n9+n7); const n16=cn(n15+n7);
+  const n17=cn(n9+n8); const n18=cn(n17+n8);
+  const n19=cn(n9+n1); const n20=cn(n19+n1);
+  const n21=cn(n9+n3); const n22=cn(n21+n3);
+  const n23=cn(n9+n2); const n24=cn(n23+n2);
+  const n25=cn(n9+n4); const n26=cn(n25+n4);
+  // Prednaznachenie - exact original formula
+  const pL=cn(cn(n2+n4)+cn(n1+n3));
+  const pS=cn(cn(n5+n6)+cn(n7+n8));
+  const pD=cn(pL+pS);
+  [['m1',n1],['m2',n2],['m3',n3],['m4',n4],['m5',n5],['m6',n6],['m7',n7],['m8',n8],
+   ['m9',n9+'/'+n10],['m11',n11],['m12',n12],['m13',n13],['m14',n14],['m15',n15],['m16',n16],
+   ['m17',n17],['m18',n18],['m19',n19],['m20',n20],['m21',n21],['m22',n22],['m23',n23],
+   ['m24',n24],['m25',n25],['m26',n26],['pl',pL],['ps',pS],['pd',pD],
+   ['mr1',cn(n5)],['mr2',cn(n6)],['mr3',cn(n5+n6)],['jr1',cn(n7)],['jr2',cn(n8)],['jr3',cn(n7+n8)],
+   ['c11',cn(n4)],['c12',cn(n3)],['c13',cn(n4+n3)],['c21',cn(n26)],['c22',cn(n22)],['c23',cn(n26+n22)],
+   ['c31',cn(n25)],['c32',cn(n21)],['c33',cn(n25+n21)],['c41',cn(n9)],['c42',cn(n10)],['c43',cn(n9+n10)],
+   ['c44',cn(n5)],['c45',cn(n6)],['c46',cn(n5+n6)],['c51',cn(n7)],['c52',cn(n8)],['c53',cn(n7+n8)],
+   ['c61',cn(n23)],['c62',cn(n19)],['c63',cn(n23+n19)],['c71',cn(n24)],['c72',cn(n20)],['c73',cn(n24+n20)],
+   ['c74',cn(n2)],['c75',cn(n1)],['c76',cn(n2+n1)]
+  ].forEach(([id,v])=>mst(id,v));
+  const mr=g('mres');if(mr)mr.style.display='block';
+  toast('Матрица рассчитана ✦');
+  if(CID) db.collection('clients').doc(CID).update({matrix:{sn,nm,pt,dd:dd2,mm,d,mo,y,im}}).catch(()=>{});
+}
+
+// ===== DIAGNOSTIC =====
+const CKS=Object.keys(CK);
+const ANS=[
+  n=>`Сессия через призму ${n} открыла важные паттерны. Карты показали зоны роста и скрытые ресурсы. Страхи указывают на места, где энергия застревает. Ресурс уже доступен — нужно лишь позволить ему работать. Общий вектор — восстановление контакта с собой.`,
+  n=>`Работа с ${n} показала многослойность запроса. На поверхности — одна история, в глубине — другая. Карты отразили внутренние противоречия, требующие интеграции. Ресурс уже внутри — нужна практика доступа к нему.`,
+  n=>`${n} — зона ключевого запроса этого периода. Карты показали и блоки, и ресурсы. Особое внимание — тому, что вызвало наибольший телесный отклик. Именно там источник трансформации.`
+];
+const RCS=[
+  ['Ежедневно 10 минут телесной практики — дыхание, ходьба, движение','Запишите 3 страха и рядом — что стоит за каждым','Найдите один шаг в направлении желаемого и сделайте его сегодня'],
+  ['Практикуйте присутствие в моменте — 5 минут в день','Позвольте себе быть несовершенным(ой) в одной сфере','Создайте ритуал заботы о себе и держитесь его неделю'],
+  ['Пишите утренние страницы — 3 страницы любых мыслей','Найдите человека, с которым можно поговорить честно','Добавьте больше того, что даёт энергию']
+];
+const FOC=['Восстановление контакта с телом','Разрешить себе чувствовать','Двигаться из силы, не из страха','Открыть сердце — начиная с себя','Найти и использовать свой голос','Доверять внутреннему знанию','Соединиться с чем-то большим'];
+
+function startDiag() {
+  const k=CKS[Math.floor(Math.random()*CKS.length)];
+  const ch=CK[k];
+  const used={momenty:[],resurs:[],strahi:[]};
+  const cards=ch.do.map(dn=>{
+    const dk=DECKS[dn],av=dk.filter((_,i)=>!used[dn].includes(i));
+    const pool=av.length?av:dk;
+    const idx=Math.floor(Math.random()*pool.length);
+    const ai=dk.indexOf(pool[idx]);used[dn].push(ai);
+    return{...pool[idx],dn,imgIdx:ai%50,gr:TH[dn].g};
+  });
+  diagState={k,ch,cards,notes:Array(8).fill(''),step:0,rev:false};
+  const prev=CU?.role==='client'?'s-cv':'s-profile';
+  screenHistory.push(prev);
+  showS('s-diag');rDStep();
+}
+function startClientDiag(){startDiag();}
+
+function rDStep() {
+  const{ch,step,cards}=diagState;
+  const dcn=g('dcn');if(dcn)dcn.textContent=ch.n;
+  const dcs=g('dcs');if(dcs)dcs.textContent=ch.s;
+  const dsl=g('dsl');if(dsl)dsl.textContent=`Шаг ${step+1} из 8`;
+  const dq=g('dq');if(dq)dq.textContent=ch.q[step];
+  const dn=g('dn');if(dn)dn.value=diagState.notes[step];
+  const dp=g('dprog');
+  if(dp)dp.innerHTML=Array.from({length:8},(_,i)=>`<div class="dpb ${i<step?'done':i===step?'cur':''}"></div>`).join('');
+  diagState.rev=false;
+  const card=cards[step];
+  const cv=g('dcv');
+  if(cv){cv.style.background=card.gr;cv.innerHTML=`<div style="text-align:center;color:rgba(255,255,255,.85)"><div style="font-size:48px;margin-bottom:10px">🃏</div><div style="font-size:14px;letter-spacing:1px;opacity:.8">Нажмите чтобы открыть</div></div>`;}
+  const dcd=g('dcd');if(dcd)dcd.style.display='none';
+  const dpb=g('dpb');if(dpb)dpb.style.display=step===0?'none':'block';
+  const dnb=g('dnb');if(dnb)dnb.textContent=step===7?'Завершить ✦':'Далее →';
+}
+
+function flipCard() {
+  if(diagState.rev)return;diagState.rev=true;
+  const c=diagState.cards[diagState.step];
+  const cv=g('dcv');if(!cv)return;
+  const tl={resurs:'РЕСУРС',strahi:'СТРАХИ',momenty:'МОМЕНТЫ'};
+  const tc={resurs:'tr',strahi:'tf',momenty:'tm'};
+  const imgUrl=CARD_IMGS[c.dn][c.imgIdx]||'';
+  cv.style.background='#f0ebe4';
+  cv.innerHTML=`<div style="position:absolute;inset:0;overflow:hidden;background:#f0ebe4">
+    <img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>
+    <div class="ctl ${tc[c.dn]}" style="position:absolute;top:12px;right:12px;z-index:2">${tl[c.dn]}</div>
+  </div>`;
+  // Hide description - not needed
+  const dcd=g('dcd');if(dcd){dcd.style.display='none';}
+}
+
+function dNext(){
+  const dn=g('dn');if(dn)diagState.notes[diagState.step]=dn.value;
+  if(diagState.step<7){diagState.step++;rDStep();}else finDiag();
+}
+function dPrev(){
+  const dn=g('dn');if(dn)diagState.notes[diagState.step]=dn.value;
+  if(diagState.step>0){diagState.step--;rDStep();}
+}
+function exitDiag(){if(confirm('Выйти? Прогресс будет потерян.'))showS(CU?.role==='client'?'s-cv':'s-profile');}
+
+function finDiag() {
+  const{k,ch,cards,notes}=diagState;
+  const a=ANS[Math.floor(Math.random()*ANS.length)](ch.n);
+  const rc=RCS[Math.floor(Math.random()*RCS.length)];
+  const fc=FOC[CKS.indexOf(k)];
+  diagState.result={k,cn:ch.n,a,rc,fc,cards,notes};
+  showS('s-result');
+  const rcn=g('rcn');if(rcn)rcn.textContent=ch.n+' · Итог';
+  const ra=g('ra');if(ra)ra.textContent=a;
+  const rf=g('rf');if(rf)rf.textContent=fc;
+  const rr=g('rr');if(rr)rr.innerHTML=rc.map((r,i)=>`<div class="sumr"><div class="sumn">${i+1}</div><div class="sumrt">${r}</div></div>`).join('');
+  const rc2=g('rc');if(rc2)rc2.innerHTML=cards.map((c,i)=>{
+    const bc=c.dn==='resurs'?'#52b788':c.dn==='strahi'?'#e63946':'#7b5ea7';
+    const imgUrl=CARD_IMGS[c.dn][c.imgIdx]||'';
+    return`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;border-left:3px solid ${bc}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:56px;height:56px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f0ebe4"><img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover"/></div>
+        <div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px">Шаг ${i+1}</div>
+        <div style="font-size:12px;font-weight:600">${diagState.ch.q[i]}</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--text)">${c.d}</div>
+      ${notes[i]?`<div style="font-size:12px;color:var(--text2);font-style:italic;border-top:1px solid var(--border);padding-top:6px;margin-top:6px">📝 ${notes[i]}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function saveResult() {
+  if(!diagState.result)return;
+  const r=diagState.result;
+  let clientId=CID, clientUid=null, specialistId=CU.uid;
+  if(CU.role==='client'){
+    clientUid=CU.uid; specialistId=CU.specialistUid||null; clientId=CU.clientDocId||null;
+  } else {
+    const cl=clients.find(c=>c.id===CID);clientUid=cl?.clientUid||null;
+  }
+  try {
+    await db.collection('sessions').add({
+      clientId,clientUid,specialistId,
+      date:firebase.firestore.FieldValue.serverTimestamp(),
+      type:'diagnostic',request:'Диагностика: '+r.cn,
+      notes:r.notes.filter(Boolean).join('\n'),
+      insights:r.a,actions:r.rc.join('\n'),payment:0,dr:r
+    });
+    if(clientId&&CU.role==='specialist'){
+      const cl=clients.find(c=>c.id===clientId);
+      if(cl?.status==='new') await db.collection('clients').doc(clientId).update({status:'active'});
+    }
+    toast('Сохранено ✦');
+    setTimeout(()=>showS(CU.role==='client'?'s-cv':'s-profile'),1000);
+  } catch(e){toast('Ошибка: '+e.message);}
+}
+
+// ===== PROFILE =====
+function rProf() {
+  const ppn=g('ppn');if(ppn)ppn.textContent=CU?.name||'';
+  const psc=g('psc');if(psc)psc.textContent=clients.length;
+  const pss=g('pss');if(pss)pss.textContent=sessions.length;
+  const code=g('specialist-code');if(code)code.textContent=CU?.code||'—';
+}
+
+// ===== CLIENT VIEW =====
+function showCV(uid) {
+  showS('s-cv');
+  const cvn=g('cvn');if(cvn)cvn.textContent=CU?.name||'';
+  // Show specialist code to client so they can share it
+  refreshCV(uid);
+}
+function refreshCV(uid) {
+  const sorted=[...sessions].sort((a,b)=>{
+    const da=a.date?.toDate?a.date.toDate():new Date(a.date||0);
+    const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
+    return db2-da;
+  });
+  const cvs=g('cvs');
+  if(cvs)cvs.innerHTML=sorted.length?sorted.map(s=>{
+    const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
+    return`<div class="sc"><div class="sd2">${dateStr(s.date)}</div>
+      <span class="st ${s.type==='diagnostic'?'t-d':s.type==='game'?'t-g':'t-c'}">${tl[s.type]||s.type}</span>
+      <div class="sr">${s.request||''}</div>
+      ${s.insights?`<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5">${s.insights.slice(0,120)}...</div>`:''}
+    </div>`;
+  }).join(''):'<div class="empty"><div class="ei">📋</div><div class="et">Сессий пока нет</div></div>';
+  const diagS=sorted.filter(s=>s.dr);
+  const cvr=g('cvr');
+  if(cvr)cvr.innerHTML=diagS.length?diagS[0].dr.rc.map((r,i)=>
+    `<div style="display:flex;gap:12px;margin-bottom:12px;background:var(--surface);border-radius:12px;padding:14px;box-shadow:var(--sh)">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--gold);color:#2c2416;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
+      <div style="font-size:14px;line-height:1.6">${r}</div>
+    </div>`
+  ).join(''):'<div class="empty"><div class="ei">✨</div><div class="et">Рекомендации появятся после диагностики</div></div>';
+}
+
+// ===== RESET PASSWORD =====
+function resetPassword() {
+  const email=(g('login-name-input')?.value||'').trim();
+  if(!email){showErr('Введите email для сброса пароля');return;}
+  auth.sendPasswordResetEmail(email)
+    .then(()=>showErr('Письмо отправлено на '+email))
+    .catch(e=>showErr('Ошибка: '+e.message));
+}
+
+// ===== EXPOSE TO WINDOW =====
+window.doLogin=doLogin; window.setAuthMode=setAuthMode; window.setRole=setRole;
+window.logout=logout; window.navTo=navTo; window.goBack=goBack;
+window.openM=openM; window.closeM=closeM; window.openCP=openCP; window.openSD=openSD;
+window.saveNC=saveNC; window.saveNS=saveNS; window.saveResult=saveResult;
+window.calcMx=calcMx; window.saveML=saveML; window.openML=openML;
+window.filterC=filterC; window.flipCard=flipCard; window.dNext=dNext; window.dPrev=dPrev;
+window.exitDiag=exitDiag; window.startDiag=startDiag; window.startClientDiag=startClientDiag;
+window.updSt=updSt; window.swTab=swTab; window.openNewSess=openNewSess;
+window.resetPassword=resetPassword;
+
+// ===== INIT =====
+window.addEventListener('load',()=>{
+  showS('s-login');
+  setAuthMode('login');
+  setRole('specialist');
+});
+
+</script>
+</body>
+</html>
