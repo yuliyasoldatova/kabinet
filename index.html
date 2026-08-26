@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<!-- BUILD: NO-GAME-SESSIONS-TABLE-2026-08-26 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Кабинет Проводника</title>
@@ -190,6 +194,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 </style>
 </head>
 <body>
+<!-- BUILD: CLIENT-ROLE-AUTH-FIX-2026-08-26 -->
 
 <!-- LOGIN -->
 <div id="s-login" class="screen active">
@@ -887,6 +892,7 @@ let CU=null, CID=null, diagState={}, screenHistory=[];
 let clients=[], sessions=[];
 let unsubClients=null, unsubSessions=null;
 let authMode='login', authRole='specialist';
+let authAttemptRole=null, registrationInProgress=false;
 
 // ===== HELPERS =====
 const g = id => document.getElementById(id);
@@ -934,6 +940,81 @@ function setAuthMode(mode) {
   }
 }
 
+async function routeAuthenticatedUser(user, checkSelectedRole=false) {
+  const uDoc=await db.collection('users').doc(user.uid).get();
+
+  // Never guess a role. A missing Firestore profile must not become a specialist automatically.
+  if(!uDoc.exists) {
+    if(registrationInProgress) return false;
+    authAttemptRole=null;
+    await auth.signOut();
+    showS('s-login');
+    showErr('Профиль аккаунта не найден. Зарегистрируйтесь заново или обратитесь к специалисту.');
+    return false;
+  }
+
+  let userData=uDoc.data();
+
+  // Repair client accounts that may have been accidentally marked as specialist by the old auth race.
+  // We only repair when the user explicitly chose Client AND there is a linked client card for this same Firebase UID.
+  if(checkSelectedRole && authAttemptRole==='client' && userData.role==='specialist') {
+    const linkedClient=await db.collection('clients').where('clientUid','==',user.uid).limit(1).get();
+    if(!linkedClient.empty) {
+      const clientDoc=linkedClient.docs[0];
+      const clientData=clientDoc.data();
+      if(clientData.specialistId && clientData.specialistId!==user.uid) {
+        const repaired={
+          role:'client',
+          specialistUid:clientData.specialistId,
+          clientDocId:clientDoc.id,
+          code:firebase.firestore.FieldValue.delete()
+        };
+        await db.collection('users').doc(user.uid).update(repaired);
+        userData={...userData,role:'client',specialistUid:clientData.specialistId,clientDocId:clientDoc.id};
+        delete userData.code;
+      }
+    }
+  }
+
+  // On an explicit login, the selected tab must match the role stored for this account.
+  if(checkSelectedRole && authAttemptRole && userData.role!==authAttemptRole) {
+    const actual=userData.role==='client'?'Клиент':'Специалист';
+    const selected=authAttemptRole==='client'?'Клиент':'Специалист';
+    authAttemptRole=null;
+    await auth.signOut();
+    showS('s-login');
+    showErr(`Этот аккаунт зарегистрирован как «${actual}». Вы выбрали вход «${selected}».`);
+    const authBtnEl=g('auth-btn');
+    if(authBtnEl){authBtnEl.disabled=false;authBtnEl.textContent='Войти';}
+    return false;
+  }
+
+  CU={uid:user.uid,email:user.email,...userData};
+  authAttemptRole=null;
+
+  const authBtnEl=g('auth-btn');
+  if(authBtnEl){authBtnEl.disabled=false;authBtnEl.textContent='Войти';}
+  showErr('');
+
+  if(CU.role==='specialist') {
+    const sl=g('s-login'); if(sl) sl.remove();
+    const bnav=g('bnav'); if(bnav) bnav.style.display='flex';
+    showS('s-dash');
+    startSpecialistListeners();
+    rDash();
+  } else if(CU.role==='client') {
+    const sl=g('s-login'); if(sl) sl.remove();
+    showCV(user.uid);
+    startClientListeners(user.uid);
+  } else {
+    await auth.signOut();
+    showS('s-login');
+    showErr('У аккаунта указана неизвестная роль.');
+    return false;
+  }
+  return true;
+}
+
 async function doLogin() {
   showErr('Подключаемся...');
   const email=(g('login-name-input').value||'').trim();
@@ -949,33 +1030,59 @@ async function doLogin() {
   if(btn){btn.disabled=true; btn.textContent='⏳...';}
 
   try {
+    authAttemptRole=authRole;
+
     if(authMode==='register') {
+      registrationInProgress=true;
       let specialistUid=null;
+
       if(authRole==='client') {
         showErr('Ищем специалиста...');
         const snap=await db.collection('users').where('code','==',code).where('role','==','specialist').get();
-        if(snap.empty){showErr('Специалист с кодом '+code+' не найден');if(btn){btn.disabled=false;btn.textContent='Зарегистрироваться';}return;}
+        if(snap.empty){
+          registrationInProgress=false;
+          authAttemptRole=null;
+          showErr('Специалист с кодом '+code+' не найден');
+          if(btn){btn.disabled=false;btn.textContent='Зарегистрироваться';}
+          return;
+        }
         specialistUid=snap.docs[0].id;
       }
+
       showErr('Создаём аккаунт...');
       const cred=await auth.createUserWithEmailAndPassword(email,pass);
       await cred.user.updateProfile({displayName:name});
+
       const userData={name,email,role:authRole,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
-      if(authRole==='specialist'){
+      if(authRole==='specialist') {
         userData.code=Math.random().toString(36).substring(2,8).toUpperCase();
       } else {
         userData.specialistUid=specialistUid;
         const clientRef=db.collection('clients').doc();
-        await clientRef.set({fullName:name,email,specialistId:specialistUid,clientUid:cred.user.uid,status:'new',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        await clientRef.set({
+          fullName:name,
+          email,
+          specialistId:specialistUid,
+          clientUid:cred.user.uid,
+          status:'new',
+          createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
         userData.clientDocId=clientRef.id;
       }
+
+      // Write the role before routing the newly-created account.
       await db.collection('users').doc(cred.user.uid).set(userData);
+      registrationInProgress=false;
+      await routeAuthenticatedUser(cred.user,false);
     } else {
       showErr('Входим...');
+      // authAttemptRole is checked by onAuthStateChanged against Firestore role.
       await auth.signInWithEmailAndPassword(email,pass);
     }
   } catch(e) {
     console.error(e);
+    registrationInProgress=false;
+    authAttemptRole=null;
     let msg='Ошибка';
     if(e.code==='auth/email-already-in-use') msg='Email уже зарегистрирован';
     else if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') msg='Неверный email или пароль';
@@ -992,8 +1099,9 @@ async function doLogin() {
 function logout() {
   stopListeners();
   CU=null;
+  authAttemptRole=null;
+  registrationInProgress=false;
   auth.signOut().then(()=>{
-    // Reload page - cleanest solution
     window.location.reload();
   }).catch(()=>{
     window.location.reload();
@@ -1003,42 +1111,23 @@ function logout() {
 // ===== FIREBASE AUTH LISTENER =====
 auth.onAuthStateChanged(async user => {
   if(user) {
+    // During registration, createUserWithEmailAndPassword fires this listener
+    // before the Firestore role profile has necessarily been written.
+    if(registrationInProgress) return;
     try {
-      const uDoc=await db.collection('users').doc(user.uid).get();
-      if(uDoc.exists) {
-        CU={uid:user.uid,email:user.email,...uDoc.data()};
-      } else {
-        // Profile missing - create specialist profile automatically
-        const code=Math.random().toString(36).substring(2,8).toUpperCase();
-        const userData={
-          name:user.displayName||user.email.split('@')[0],
-          email:user.email, role:'specialist', code,
-          createdAt:firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection('users').doc(user.uid).set(userData);
-        CU={uid:user.uid,...userData};
-      }
-      // Reset auth button state first
-      const authBtnEl=g('auth-btn');
-      if(authBtnEl){authBtnEl.disabled=false;authBtnEl.textContent='Войти';}
-      showErr('');
-      if(CU.role==='specialist') {
-        const sl=g('s-login'); if(sl) sl.remove(); // Remove login from DOM completely
-        const bnav=g('bnav'); if(bnav) bnav.style.display='flex';
-        showS('s-dash'); startSpecialistListeners(); rDash();
-      } else {
-        const sl=g('s-login'); if(sl) sl.remove(); // Remove login from DOM completely
-        showCV(user.uid); startClientListeners(user.uid);
-      }
+      await routeAuthenticatedUser(user, !!authAttemptRole);
     } catch(e) {
       console.error('Auth error:',e);
+      authAttemptRole=null;
       showS('s-login');
       showErr('Ошибка: '+e.message);
     }
   } else {
-    CU=null; stopListeners();
-    g('bnav').style.display='none';
-    showS('s-login');
+    CU=null;
+    stopListeners();
+    const bnav=g('bnav'); if(bnav) bnav.style.display='none';
+    const login=g('s-login');
+    if(login) showS('s-login');
   }
 });
 
@@ -1269,8 +1358,8 @@ function dateStr(d,time) {
 }
 
 function scHTML(s) {
-  const tm={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
+  const tm={diagnostic:'t-d',consultation:'t-c'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
   const b=parseInt(s.stateBefore)||0,a=parseInt(s.stateAfter)||0;
   const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${s.payment}₸</span>`:'';
   return `<div class="sc" onclick="window.openSD('${s.id}')">
@@ -1381,8 +1470,8 @@ function rAllSess() {
     list.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">Сессии не найдены</div></div>';
     return;
   }
-  const typeLabel={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
-  const typeClass={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
+  const typeLabel={diagnostic:'Диагностика',consultation:'Консультация'};
+  const typeClass={diagnostic:'t-d',consultation:'t-c'};
   list.innerHTML=`<div class="sessions-table-wrap"><table class="sessions-table">
     <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Запрос</th><th>Состояние</th><th>Оплата</th><th></th></tr></thead>
     <tbody>${sorted.map(s=>{
@@ -1416,7 +1505,7 @@ function openSD(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
   screenHistory.push(document.querySelector('.screen.active')?.id||'s-sessions');
   showS('s-sessdet');
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
   const cl=clients.find(c=>c.id===s.clientId);
   const isSpec=CU?.role==='specialist';
   const sdc=g('sdc'); if(!sdc) return;
@@ -1900,8 +1989,8 @@ function refreshCV(uid) {
   // Sessions list
   const cvs=g('cvs');
   if(cvs)cvs.innerHTML=sorted.length?sorted.map(s=>{
-    const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
-    const tc={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
+    const tl={diagnostic:'Диагностика',consultation:'Консультация'};
+    const tc={diagnostic:'t-d',consultation:'t-c'};
     return`<div class="sc" onclick="window.openSD('${s.id}')">
       <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
       <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
@@ -1959,7 +2048,7 @@ function showUpcomingMeeting(bookings, isClient) {
 
   if(isClient) {
     const el=g('cv-upcoming'); if(!el) return;
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика'};
     let html='';
     // Show all upcoming confirmed meetings
     if(upcoming.length) {
@@ -2004,7 +2093,7 @@ function showClientUpcomingMeeting(bookings) {
   const pending=bookings.filter(b=>b.status==='pending');
   if(upcoming.length) {
     const m=upcoming[0];
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика'};
     el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
       <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
       <div style="font-size:14px;font-weight:600">${new Date(m.date+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
@@ -2012,7 +2101,7 @@ function showClientUpcomingMeeting(bookings) {
     </div>`;
   } else if(pending.length) {
     const p=pending[0];
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика'};
     el.innerHTML=`<div style="background:#fff8e1;border-radius:12px;padding:14px;border-left:3px solid #ff8f00">
       <div style="font-size:11px;color:#ff8f00;font-weight:600;margin-bottom:4px">⏳ Запрос на встречу</div>
       <div style="font-size:14px;font-weight:600">${new Date(p.date+'T'+p.time).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${p.time}</div>
@@ -2025,7 +2114,7 @@ function showClientUpcomingMeeting(bookings) {
 function openConfirmBooking(bookingId) {
   const booking=(window._currentBookings||[]).find(b=>b.id===bookingId);
   if(!booking) { toast('Бронь не найдена'); return; }
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика'};
   const isEdit = booking.status==='confirmed';
   const title=g('confirm-modal-title');
   if(title) title.textContent=isEdit?'Редактировать встречу':'Подтвердить встречу';
@@ -2108,7 +2197,7 @@ function loadSpecialistBookings(specialistUid) {
       if(bookings.length) {
         section.style.display='block';
         list.innerHTML=bookings.map(b=>{
-          const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+          const tl={consultation:'Консультация',diagnostic:'Диагностика'};
           return`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh);border-left:3px solid #ff8f00">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px">${b.clientName||'Клиент'}</div>
             <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${tl[b.type]||b.type} · ${new Date(b.date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${b.time}</div>
@@ -2381,7 +2470,7 @@ function calNextWeek() { calWeekOffset++; renderCalendar(); }
 
 function renderSpecialistMeetings() {
   const now = new Date();
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика'};
   const upcoming = calBookings.filter(b=>b.status==='confirmed'&&new Date(b.date+'T'+(b.time||'00:00'))>now)
     .sort((a,x)=>new Date(a.date+'T'+(a.time||'00:00'))-new Date(x.date+'T'+(x.time||'00:00')));
   const pending2 = calBookings.filter(b=>b.status==='pending')
@@ -2398,7 +2487,7 @@ function renderSpecialistMeetings() {
 }
 
 function buildMeetingCard(b,isPast,tl) {
-  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика'};
   const dt=new Date(b.date+'T'+(b.time||'12:00'));
   const dtStr=dt.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})+' в '+(b.time||'—');
   const cl=clients.find(c=>c.clientUid===b.clientUid);
@@ -2417,7 +2506,7 @@ function buildMeetingCard(b,isPast,tl) {
 }
 
 function buildPendingCard(b,tl) {
-  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика'};
   const dt=new Date(b.date+'T'+(b.time||'12:00'));
   const dtStr=dt.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})+' в '+(b.time||'—');
   const name=b.clientName||b.clientContact||'Клиент';
@@ -2463,7 +2552,7 @@ async function openBookingWithSlots() {
 
 function showBookingSlots(available) {
   const modal = g('m-book'); if(!modal) return;
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика'};
   let slotsHTML = '';
   if(available.length===0) {
     slotsHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Нет доступных слотов.<br>Обратитесь к специалисту напрямую.</div>';
@@ -2533,8 +2622,8 @@ function refreshCVWithMeetings(uid) {
     const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
     return db2-da;
   });
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
-  const tc={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
+  const tc={diagnostic:'t-d',consultation:'t-c'};
   const sessCard = s=>`<div class="sc" onclick="window.openSD('${s.id}')">
     <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
     <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
