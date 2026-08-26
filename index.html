@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<!-- BUILD: NO-GAME-SESSIONS-TABLE-2026-08-26 -->
+<!-- BUILD: CLIENT-EMAIL-DELETE-CUSTOM-MEETING-TYPES-2026-08-26 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -459,10 +459,23 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <div style="color:var(--text2);font-size:13px;margin-top:4px">Специалист · Проводник</div>
     </div>
     <div class="stats"><div class="stat"><div class="stat-n" id="psc">0</div><div class="stat-l">Клиентов</div></div><div class="stat"><div class="stat-n" id="pss">0</div><div class="stat-l">Сессий</div></div></div>
+    <div style="background:var(--surface);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Email входа</div>
+      <div id="pp-email" style="font-size:15px;font-weight:600;word-break:break-all">—</div>
+    </div>
     <div style="background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:16px;text-align:center">
       <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Ваш код для клиентов</div>
       <div id="specialist-code" style="font-size:32px;font-weight:700;letter-spacing:6px;color:var(--accent);font-family:'Cormorant Garamond',serif">—</div>
       <div style="font-size:12px;color:var(--text2);margin-top:6px">Дайте этот код клиенту при регистрации</div>
+    </div>
+    <div style="background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:16px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px">Типы встреч</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:14px">Добавляйте свои форматы. Они появятся в новых сессиях и в форме записи клиентов.</div>
+      <div id="meeting-types-list" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <input class="finp" id="new-meeting-type" type="text" placeholder="Например, Химия-сессия" style="flex:1;min-width:0">
+        <button onclick="window.addMeetingType()" style="padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Добавить</button>
+      </div>
     </div>
     <button class="bo" style="width:100%" onclick="window.logout()">Выйти</button>
   </div>
@@ -514,6 +527,10 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div style="margin-top:24px;background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--sh)">
       <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:16px">Мои данные</div>
       <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">Email входа</label>
+        <div id="cv-email" style="font-size:14px;font-weight:600;word-break:break-all;padding:10px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">—</div>
+      </div>
+      <div style="margin-bottom:12px">
         <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">Дата рождения</label>
         <input id="cv-edit-bd" type="date" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg)"/>
       </div>
@@ -532,6 +549,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div class="mh"></div><div class="mt">Новый клиент</div>
     <div class="ff"><label class="fl2">ФИО *</label><input class="finp" id="ncn" type="text" placeholder="Иванова Мария Петровна"></div>
     <div class="ff"><label class="fl2">Дата рождения</label><input class="finp" id="ncb" type="date"></div>
+    <div class="ff"><label class="fl2">Email</label><input class="finp" id="nce" type="email" placeholder="client@email.com"></div>
     <div class="ff"><label class="fl2">Контакты</label><input class="finp" id="ncc" type="text" placeholder="Telegram, телефон..."></div>
     <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="ncr" placeholder="С чем пришёл клиент..."></textarea></div>
     <div class="ff"><label class="fl2">Статус</label><select class="fsel" id="ncs"><option value="new">Новый</option><option value="active">Активный</option><option value="done">Завершён</option></select></div>
@@ -553,7 +571,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
         <option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option>
       </select></div>
     </div>
-    <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select></div>
+    <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select>
+      <button type="button" onclick="window.quickAddMeetingType()" style="margin-top:7px;border:none;background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0">＋ Добавить свой тип встречи</button></div>
     <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="nsr" placeholder="Что беспокоит..."></textarea></div>
     <div class="ff"><label class="fl2">Заметки</label><textarea class="fta" id="nsn" placeholder="Наблюдения..."></textarea></div>
     <div class="ff"><label class="fl2">Инсайты</label><textarea class="fta" id="nsi" placeholder="Ключевые инсайты..."></textarea></div>
@@ -703,10 +722,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     </div>
     <div class="ff">
       <label class="fl2">Формат</label>
-      <select class="fsel" id="book-type">
-        <option value="consultation">Консультация</option>
-        <option value="diagnostic">Диагностика</option>
-      </select>
+      <select class="fsel" id="book-type"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select>
     </div>
     <div class="ff">
       <label class="fl2">Комментарий (необязательно)</label>
@@ -893,6 +909,11 @@ let clients=[], sessions=[];
 let unsubClients=null, unsubSessions=null;
 let authMode='login', authRole='specialist';
 let authAttemptRole=null, registrationInProgress=false;
+const DEFAULT_MEETING_TYPES=[
+  {id:'consultation',name:'Консультация',builtin:true},
+  {id:'diagnostic',name:'Диагностика',builtin:true}
+];
+let meetingTypes=DEFAULT_MEETING_TYPES.map(x=>({...x}));
 
 // ===== HELPERS =====
 const g = id => document.getElementById(id);
@@ -907,6 +928,114 @@ function showErr(msg) {
   el.textContent=msg; el.style.display='block';
   el.style.color=msg.includes('...')||msg.includes('Подключ')?'#52b788':'#ff8a80';
   el.style.background=msg.includes('...')||msg.includes('Подключ')?'rgba(82,183,136,.15)':'rgba(255,100,80,.12)';
+}
+
+function normalizeMeetingTypes(raw) {
+  const out=DEFAULT_MEETING_TYPES.map(x=>({...x}));
+  if(Array.isArray(raw)) {
+    raw.forEach(item=>{
+      const id=String(item?.id||'').trim();
+      const name=String(item?.name||'').trim();
+      if(!id||!name||out.some(x=>x.id===id)) return;
+      out.push({id,name,builtin:false});
+    });
+  }
+  return out;
+}
+
+function setMeetingTypes(raw) {
+  meetingTypes=normalizeMeetingTypes(raw);
+  populateMeetingTypeSelects();
+  renderMeetingTypesManager();
+}
+
+async function loadMeetingTypesForUid(uid) {
+  if(!uid){setMeetingTypes([]);return;}
+  try {
+    const snap=await db.collection('users').doc(uid).get();
+    setMeetingTypes(snap.exists?(snap.data().meetingTypes||[]):[]);
+  } catch(e) {
+    console.warn('Meeting types load error',e);
+    setMeetingTypes([]);
+  }
+}
+
+function meetingTypeLabel(type, storedName='') {
+  if(storedName) return storedName;
+  return meetingTypes.find(x=>x.id===type)?.name || DEFAULT_MEETING_TYPES.find(x=>x.id===type)?.name || type || 'Сессия';
+}
+
+function meetingTypeOptions(selected='', extraName='') {
+  const items=meetingTypes.map(x=>({...x}));
+  if(selected&&!items.some(x=>x.id===selected)) items.push({id:selected,name:extraName||selected,builtin:false});
+  return items.map(x=>`<option value="${escHTML(x.id)}" ${x.id===selected?'selected':''}>${escHTML(x.name)}</option>`).join('');
+}
+
+function populateMeetingTypeSelect(id, selected='', extraName='') {
+  const sel=g(id); if(!sel) return;
+  const keep=selected||sel.value||'consultation';
+  sel.innerHTML=meetingTypeOptions(keep,extraName);
+  if([...sel.options].some(o=>o.value===keep)) sel.value=keep;
+}
+
+function populateMeetingTypeSelects() {
+  ['nst','book-type','pub-type'].forEach(id=>populateMeetingTypeSelect(id));
+}
+
+function renderMeetingTypesManager() {
+  const el=g('meeting-types-list'); if(!el) return;
+  el.innerHTML=meetingTypes.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">
+    <div style="flex:1;font-size:14px;font-weight:600">${escHTML(t.name)}</div>
+    ${t.builtin?'<span style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px">базовый</span>':`<button onclick="window.removeMeetingType('${escHTML(t.id)}')" style="border:none;background:transparent;color:#e63946;font-size:13px;cursor:pointer;padding:4px 6px">Удалить</button>`}
+  </div>`).join('');
+}
+
+async function addMeetingType() {
+  if(CU?.role!=='specialist') return;
+  const inp=g('new-meeting-type');
+  const name=(inp?.value||'').trim();
+  if(!name){toast('Введите название типа встречи');return;}
+  if(meetingTypes.some(x=>x.name.toLowerCase()===name.toLowerCase())){toast('Такой тип уже есть');return;}
+  const id='custom_'+Date.now().toString(36);
+  meetingTypes.push({id,name,builtin:false});
+  try {
+    await db.collection('users').doc(CU.uid).set({meetingTypes:meetingTypes.map(({id,name})=>({id,name}))},{merge:true});
+    if(inp) inp.value='';
+    populateMeetingTypeSelects();
+    renderMeetingTypesManager();
+    toast('Тип встречи добавлен ✦');
+  } catch(e) {
+    meetingTypes=meetingTypes.filter(x=>x.id!==id);
+    toast('Ошибка: '+e.message);
+  }
+}
+
+async function quickAddMeetingType() {
+  if(CU?.role!=='specialist') return;
+  const name=(prompt('Название нового типа встречи:')||'').trim();
+  if(!name) return;
+  const inp=g('new-meeting-type'); if(inp) inp.value=name;
+  await addMeetingType();
+  const added=meetingTypes.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(added) populateMeetingTypeSelect('nst',added.id);
+}
+
+async function removeMeetingType(id) {
+  if(CU?.role!=='specialist') return;
+  const item=meetingTypes.find(x=>x.id===id);
+  if(!item||item.builtin) return;
+  if(!confirm(`Удалить тип встречи «${item.name}»? Старые сессии сохранят своё название.`)) return;
+  const before=meetingTypes.map(x=>({...x}));
+  meetingTypes=meetingTypes.filter(x=>x.id!==id);
+  try {
+    await db.collection('users').doc(CU.uid).set({meetingTypes:meetingTypes.map(({id,name})=>({id,name}))},{merge:true});
+    populateMeetingTypeSelects();
+    renderMeetingTypesManager();
+    toast('Тип встречи удалён');
+  } catch(e) {
+    meetingTypes=before;
+    toast('Ошибка: '+e.message);
+  }
 }
 
 // ===== AUTH =====
@@ -991,6 +1120,7 @@ async function routeAuthenticatedUser(user, checkSelectedRole=false) {
 
   CU={uid:user.uid,email:user.email,...userData};
   authAttemptRole=null;
+  await loadMeetingTypesForUid(CU.role==='client'?CU.specialistUid:CU.uid);
 
   const authBtnEl=g('auth-btn');
   if(authBtnEl){authBtnEl.disabled=false;authBtnEl.textContent='Войти';}
@@ -1056,6 +1186,7 @@ async function doLogin() {
       const userData={name,email,role:authRole,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
       if(authRole==='specialist') {
         userData.code=Math.random().toString(36).substring(2,8).toUpperCase();
+        userData.meetingTypes=DEFAULT_MEETING_TYPES.map(({id,name})=>({id,name}));
       } else {
         userData.specialistUid=specialistUid;
         const clientRef=db.collection('clients').doc();
@@ -1219,6 +1350,7 @@ function ccHTML(c,idx) {
     <div class="ci">
       <div style="font-size:11px;color:var(--text2)">#${(idx||0)+1}</div>
       <div class="cn">${c.fullName}</div>
+      ${c.email?`<div style="font-size:11px;color:var(--text2);word-break:break-all">${escHTML(c.email)}</div>`:''}
       ${c.contacts?`<div style="font-size:11px;color:var(--text2)">${c.contacts}</div>`:''}
       <div style="font-size:11px;color:var(--text2)">${cSess.length} сесс.${paid?' · '+paid+'₸':''}</div>
     </div>
@@ -1229,7 +1361,8 @@ function ccHTML(c,idx) {
 // ===== CLIENTS =====
 function rClients(filter='') {
   const list=g('cl'); if(!list) return;
-  const x=clients.filter(c=>!filter||c.fullName.toLowerCase().includes(filter.toLowerCase()));
+  const q=(filter||'').toLowerCase();
+  const x=clients.filter(c=>!q||[c.fullName,c.email,c.contacts].some(v=>(v||'').toLowerCase().includes(q)));
   list.innerHTML=x.length?x.map((c,i)=>ccHTML(c,i)).join(''):'<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
 }
 function filterC(v){rClients(v);}
@@ -1240,12 +1373,13 @@ async function saveNC() {
   try {
     await db.collection('clients').add({
       fullName:fn, birthDate:g('ncb')?.value||'',
+      email:(g('nce')?.value||'').trim(),
       contacts:g('ncc')?.value||'', mainRequest:g('ncr')?.value||'',
       status:g('ncs')?.value||'new', specialistId:CU.uid,
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     closeM('m-nc');
-    ['ncn','ncb','ncc','ncr'].forEach(id=>{const e=g(id);if(e)e.value='';});
+    ['ncn','ncb','nce','ncc','ncr'].forEach(id=>{const e=g(id);if(e)e.value='';});
     toast('Клиент создан ✦');
   } catch(e){toast('Ошибка: '+e.message);}
 }
@@ -1259,10 +1393,11 @@ function openCP(clientId) {
   const ini=cl.fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const pav=g('pav'); if(pav) pav.textContent=ini;
   const pn=g('pn'); if(pn) pn.textContent=cl.fullName;
-  const pm=g('pm'); if(pm) pm.textContent=(cl.birthDate||'')+(cl.contacts?' · '+cl.contacts:'');
+  const pm=g('pm'); if(pm) pm.textContent=[cl.birthDate,cl.email,cl.contacts].filter(Boolean).join(' · ');
   const pir=g('pir');
   if(pir) pir.innerHTML=`
     <div class="ir"><div class="il">Дата рождения</div><div class="iv"><input id="edit-bd" type="date" value="${cl.birthDate||''}" style="border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-family:'Nunito',sans-serif;background:var(--bg);font-size:14px;width:100%"/></div></div>
+    <div class="ir"><div class="il">Email</div><div class="iv" id="client-email-view" style="font-weight:600;word-break:break-all">${cl.clientUid?escHTML(cl.email||'—'):`<input id="edit-em" type="email" value="${escHTML(cl.email||'')}" placeholder="client@email.com" style="border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-family:'Nunito',sans-serif;background:var(--bg);font-size:14px;width:100%"/>`}</div></div>
     <div class="ir"><div class="il">Контакты</div><div class="iv"><input id="edit-ct" type="text" value="${cl.contacts||''}" placeholder="Telegram, телефон..." style="border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-family:'Nunito',sans-serif;background:var(--bg);font-size:14px;width:100%"/></div></div>
     <div class="ir"><div class="il">Запрос</div><div class="iv"><textarea id="edit-rq" style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-family:'Nunito',sans-serif;background:var(--bg);font-size:14px;width:100%;min-height:60px;resize:vertical">${cl.mainRequest||''}</textarea></div></div>
     <div class="ir"><div class="il">Статус</div><div class="iv">
@@ -1273,7 +1408,8 @@ function openCP(clientId) {
       </select>
     </div></div>
     <div class="ir"><div class="il">Код для клиента</div><div class="iv" style="font-weight:700;color:var(--accent);letter-spacing:3px">${CU.code||'—'}</div></div>
-    <button onclick="window.saveClientData('${cl.id}')" style="width:100%;margin-top:12px;padding:11px;border-radius:10px;border:none;background:var(--accent2);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">💾 Сохранить данные</button>`;
+    <button onclick="window.saveClientData('${cl.id}')" style="width:100%;margin-top:12px;padding:11px;border-radius:10px;border:none;background:var(--accent2);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">💾 Сохранить данные</button>
+    <button onclick="window.deleteClient('${cl.id}')" style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🗑 Удалить клиента</button>`;
   const mli=g('mli'); if(mli) mli.value=cl.meetLink||'';
   const mlo=g('mlo'); if(mlo) mlo.style.display=cl.meetLink?'flex':'none';
   if(cl.birthDate){
@@ -1281,6 +1417,7 @@ function openCP(clientId) {
     const my=g('mx-y');const mm=g('mx-mo');const md=g('mx-d');
     if(my)my.value=p[0]||'';if(mm)mm.value=p[1]||'';if(md)md.value=p[2]||'';
   }
+  if(!cl.email&&cl.clientUid) hydrateClientEmail(cl.id,cl.clientUid);
   if(cl.matrix){
     const m=cl.matrix;
     ['sn','nm','pt','dd','mm'].forEach(f=>{const e=g('mx-'+f);if(e)e.value=m[f]||'';});
@@ -1320,16 +1457,59 @@ async function saveClientData(id) {
   const bd=g('edit-bd')?.value||'';
   const ct=g('edit-ct')?.value||'';
   const rq=g('edit-rq')?.value||'';
+  const emEl=g('edit-em');
+  const em=(emEl?.value||'').trim();
   try {
-    await db.collection('clients').doc(id).update({
-      birthDate:bd, contacts:ct, mainRequest:rq
-    });
+    const updateData={birthDate:bd,contacts:ct,mainRequest:rq};
+    if(emEl) updateData.email=em;
+    await db.collection('clients').doc(id).update(updateData);
     toast('Данные сохранены ✦');
     // Update matrix date fields
     if(bd){const p=bd.split('-');const my=g('mx-y');const mm=g('mx-mo');const md=g('mx-d');if(my)my.value=p[0]||'';if(mm)mm.value=p[1]||'';if(md)md.value=p[2]||'';}
     // Update header
-    const pm2=g('pm');if(pm2)pm2.textContent=bd+(ct?' · '+ct:'');
+    const pm2=g('pm');if(pm2){const cl=clients.find(c=>c.id===id);const emailForHeader=emEl?em:cl?.email;pm2.textContent=[bd,emailForHeader,ct].filter(Boolean).join(' · ');}
   } catch(e){toast('Ошибка: '+e.message);}
+}
+
+async function hydrateClientEmail(clientId, clientUid) {
+  if(!clientUid) return;
+  try {
+    const snap=await db.collection('users').doc(clientUid).get();
+    const email=snap.exists?(snap.data().email||''):'';
+    if(!email) return;
+    const cl=clients.find(c=>c.id===clientId);
+    if(cl&&!cl.email) cl.email=email;
+    const el=g('client-email-view'); if(el) el.textContent=email;
+    const pm=g('pm'); if(pm&&cl) pm.textContent=[cl.birthDate,email,cl.contacts].filter(Boolean).join(' · ');
+    await db.collection('clients').doc(clientId).set({email},{merge:true});
+  } catch(e){console.warn('Client email load error',e);}
+}
+
+async function deleteClient(clientId) {
+  if(CU?.role!=='specialist') return;
+  const cl=clients.find(c=>c.id===clientId); if(!cl) return;
+  const linked=sessions.filter(x=>x.clientId===clientId).length;
+  const msg=`Удалить клиента «${cl.fullName}»? Будут удалены его карточка, ${linked} сесс. и связанные записи на встречи. Это действие нельзя отменить.`;
+  if(!confirm(msg)) return;
+  try {
+    const sessionSnap=await db.collection('sessions').where('clientId','==',clientId).get();
+    const bookingSnap=await db.collection('bookings').where('specialistUid','==',CU.uid).get();
+    const refs=[...sessionSnap.docs.map(d=>d.ref),...bookingSnap.docs.filter(d=>{
+      const b=d.data(); return b.clientDocId===clientId || (!!cl.clientUid&&b.clientUid===cl.clientUid);
+    }).map(d=>d.ref),db.collection('clients').doc(clientId)];
+    for(let i=0;i<refs.length;i+=450){
+      const batch=db.batch();
+      refs.slice(i,i+450).forEach(ref=>batch.delete(ref));
+      await batch.commit();
+    }
+    if(cl.clientUid){
+      await db.collection('users').doc(cl.clientUid).set({clientDocId:null,specialistUid:null,removedBySpecialist:true},{merge:true}).catch(()=>{});
+    }
+    CID=null;
+    showS('s-clients');
+    rClients();
+    toast('Клиент удалён');
+  } catch(e){toast('Ошибка удаления: '+e.message);}
 }
 function saveML() {
   const val=g('mli')?.value||'';
@@ -1359,18 +1539,18 @@ function dateStr(d,time) {
 
 function scHTML(s) {
   const tm={diagnostic:'t-d',consultation:'t-c'};
-  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
   const b=parseInt(s.stateBefore)||0,a=parseInt(s.stateAfter)||0;
   const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${s.payment}₸</span>`:'';
   return `<div class="sc" onclick="window.openSD('${s.id}')">
     <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
-    <span class="st ${tm[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
+    <span class="st ${tm[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span>
     <div class="sr">${(s.request||'').slice(0,80)}${pay}</div>
     ${b||a?`<div class="sbar"><span>До:${b}</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<b?'f':''}"></div>`).join('')}</div><span>→</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<a?'f':''}"></div>`).join('')}</div><span>После:${a}</span></div>`:''}
   </div>`;
 }
 
 function openNewSess(){
+  populateMeetingTypeSelect('nst');
   closeM('m-ns');
   setTimeout(()=>{
     openM('m-ns');
@@ -1392,12 +1572,13 @@ async function saveNS() {
   const dateVal=sessDate
     ? firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime))
     : firebase.firestore.FieldValue.serverTimestamp();
+  const sessType=g('nst')?.value||'consultation';
   try {
     await db.collection('sessions').add({
       clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
       date:dateVal,
       sessionDate:sessDate, sessionTime:sessTime,
-      type:g('nst')?.value||'consultation',
+      type:sessType, typeName:meetingTypeLabel(sessType),
       request:g('nsr')?.value||'', notes:g('nsn')?.value||'',
       insights:g('nsi')?.value||'', actions:g('nsa')?.value||'',
       summary:g('nssum')?.value||'',
@@ -1470,7 +1651,6 @@ function rAllSess() {
     list.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">Сессии не найдены</div></div>';
     return;
   }
-  const typeLabel={diagnostic:'Диагностика',consultation:'Консультация'};
   const typeClass={diagnostic:'t-d',consultation:'t-c'};
   list.innerHTML=`<div class="sessions-table-wrap"><table class="sessions-table">
     <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Запрос</th><th>Состояние</th><th>Оплата</th><th></th></tr></thead>
@@ -1484,7 +1664,7 @@ function rAllSess() {
       return `<tr onclick="window.openSD('${escHTML(s.id)}')">
         <td><div class="sessions-date-main">${escHTML(dateText)}</div><div class="sessions-date-time">${escHTML(timeText)}</div></td>
         <td><div class="sessions-client-name">${escHTML(cl?.fullName||'Клиент не найден')}</div></td>
-        <td><span class="st ${typeClass[s.type]||'t-c'}">${escHTML(typeLabel[s.type]||'Сессия')}</span></td>
+        <td><span class="st ${typeClass[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span></td>
         <td><div class="sessions-request">${escHTML(s.request||'—')}</div></td>
         <td><div class="sessions-state">${escHTML(before)} → ${escHTML(after)}</div></td>
         <td><div class="sessions-payment">${payment}</div></td>
@@ -1505,7 +1685,6 @@ function openSD(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
   screenHistory.push(document.querySelector('.screen.active')?.id||'s-sessions');
   showS('s-sessdet');
-  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
   const cl=clients.find(c=>c.id===s.clientId);
   const isSpec=CU?.role==='specialist';
   const sdc=g('sdc'); if(!sdc) return;
@@ -1554,7 +1733,7 @@ function openSD(sid) {
   sdc.innerHTML=`
     <div style="margin-bottom:20px">
       <div style="font-size:12px;color:var(--text2)">${dateStr(s.date,s.sessionTime)}</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:26px">${tl[s.type]||s.type}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:26px">${escHTML(meetingTypeLabel(s.type,s.typeName))}</div>
       ${cl&&isSpec?`<div style="font-size:13px;color:var(--text2)">${cl.fullName}</div>`:''}
       ${s.payment&&isSpec?`<div style="font-size:15px;font-weight:700;color:var(--accent);margin-top:4px">${s.payment}₸</div>`:''}
     </div>
@@ -1582,6 +1761,7 @@ function openSD(sid) {
 
 function editSession(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
+  populateMeetingTypeSelect('nst',s.type||'consultation',s.typeName||'');
   const nst=g('nst');if(nst)nst.value=s.type||'consultation';
   const nsd=g('nsd');if(nsd)nsd.value=s.sessionDate||s.date?.toDate?.().toISOString().split('T')[0]||'';
   const nstm=g('nstm');if(nstm)nstm.value=s.sessionTime||'10:00';
@@ -1623,8 +1803,9 @@ async function saveClientNote(sid) {
 async function updateSession(sid) {
   const sessDate=g('nsd')?.value||'';
   const sessTime=g('nstm')?.value||'';
+  const updateType=g('nst')?.value||'consultation';
   const updateData={
-    type:g('nst')?.value||'consultation',
+    type:updateType, typeName:meetingTypeLabel(updateType),
     request:g('nsr')?.value||'',
     notes:g('nsn')?.value||'',
     insights:g('nsi')?.value||'',
@@ -1935,15 +2116,18 @@ async function saveResult() {
 // ===== PROFILE =====
 function rProf() {
   const ppn=g('ppn');if(ppn)ppn.textContent=CU?.name||'';
+  const ppe=g('pp-email');if(ppe)ppe.textContent=CU?.email||auth.currentUser?.email||'—';
   const psc=g('psc');if(psc)psc.textContent=clients.length;
   const pss=g('pss');if(pss)pss.textContent=sessions.length;
   const code=g('specialist-code');if(code)code.textContent=CU?.code||'—';
+  renderMeetingTypesManager();
 }
 
 // ===== CLIENT VIEW =====
 function showCV(uid) {
   showS('s-cv');
   const cvn=g('cvn');if(cvn)cvn.textContent=CU?.name||'';
+  const cve=g('cv-email');if(cve)cve.textContent=CU?.email||auth.currentUser?.email||'—';
   // Show specialist code to client so they can share it
   refreshCV(uid);
 }
@@ -1989,11 +2173,10 @@ function refreshCV(uid) {
   // Sessions list
   const cvs=g('cvs');
   if(cvs)cvs.innerHTML=sorted.length?sorted.map(s=>{
-    const tl={diagnostic:'Диагностика',consultation:'Консультация'};
     const tc={diagnostic:'t-d',consultation:'t-c'};
     return`<div class="sc" onclick="window.openSD('${s.id}')">
       <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
-      <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
+      <span class="st ${tc[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span>
       <div class="sr">${s.request||''}</div>
       ${s.summary?`<div style="font-size:13px;color:#2c7a4b;margin-top:6px;line-height:1.5">${s.summary.slice(0,100)}${s.summary.length>100?'...':''}</div>`:''}
     </div>`;
@@ -2027,7 +2210,7 @@ async function sendBooking() {
       clientName:CU.name,
       clientDocId:CU.clientDocId||null,
       specialistUid:CU.specialistUid||null,
-      date,time,type,comment,
+      date,time,type,typeName:meetingTypeLabel(type),comment,
       status:'pending', // pending | confirmed | rejected
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -2058,7 +2241,7 @@ function showUpcomingMeeting(bookings, isClient) {
         html+=`<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:var(--r);padding:20px;color:#fff;margin-bottom:12px">
           <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">✓ Встреча подтверждена</div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;text-transform:capitalize">${dtStr}</div>
-          <div style="font-size:13px;opacity:.8;margin-bottom:${m.meetLink?'14px':'4px'}">${tl[m.type]||m.type}</div>
+          <div style="font-size:13px;opacity:.8;margin-bottom:${m.meetLink?'14px':'4px'}">${escHTML(meetingTypeLabel(m.type,m.typeName))}</div>
           ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);color:#fff;padding:10px 18px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;text-decoration:none">🎥 Подключиться к встрече</a>`:'<div style="font-size:12px;opacity:.5;margin-top:4px">Ссылка появится после подтверждения специалиста</div>'}
         </div>`;
       });
@@ -2069,7 +2252,7 @@ function showUpcomingMeeting(bookings, isClient) {
         html+=`<div style="background:var(--surface);border-radius:var(--r);padding:16px;box-shadow:var(--sh);margin-bottom:12px;border-left:3px solid #ff8f00">
           <div style="font-size:12px;color:#ff8f00;font-weight:600;margin-bottom:6px">⏳ Запрос отправлен — ожидаем ответа</div>
           <div style="font-size:14px;font-weight:600;margin-bottom:2px">${new Date(p.date+'T12:00').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${p.time||'—'}</div>
-          <div style="font-size:13px;color:var(--text2)">${tl[p.type]||p.type}</div>
+          <div style="font-size:13px;color:var(--text2)">${escHTML(meetingTypeLabel(p.type,p.typeName))}</div>
         </div>`;
       });
     }
@@ -2097,7 +2280,7 @@ function showClientUpcomingMeeting(bookings) {
     el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
       <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
       <div style="font-size:14px;font-weight:600">${new Date(m.date+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
-      <div style="font-size:12px;color:var(--text2)">${tl[m.type]||m.type}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
+      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
     </div>`;
   } else if(pending.length) {
     const p=pending[0];
@@ -2105,7 +2288,7 @@ function showClientUpcomingMeeting(bookings) {
     el.innerHTML=`<div style="background:#fff8e1;border-radius:12px;padding:14px;border-left:3px solid #ff8f00">
       <div style="font-size:11px;color:#ff8f00;font-weight:600;margin-bottom:4px">⏳ Запрос на встречу</div>
       <div style="font-size:14px;font-weight:600">${new Date(p.date+'T'+p.time).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${p.time}</div>
-      <div style="font-size:12px;color:var(--text2)">${tl[p.type]||p.type}${p.comment?' · '+p.comment:''}</div>
+      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(p.type,p.typeName))}${p.comment?' · '+p.comment:''}</div>
       <button onclick="window.openConfirmBooking('${p.id}')" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Подтвердить / отклонить</button>
     </div>`;
   } else { el.innerHTML=''; }
@@ -2122,7 +2305,7 @@ function openConfirmBooking(bookingId) {
   if(info) info.innerHTML=`
     <div style="display:flex;flex-direction:column;gap:4px">
       <div><b>Клиент:</b> ${booking.clientName||'—'}</div>
-      <div><b>Тип:</b> ${tl[booking.type]||booking.type}</div>
+      <div><b>Тип:</b> ${escHTML(meetingTypeLabel(booking.type,booking.typeName))}</div>
       ${booking.comment?`<div><b>Запрос:</b> ${booking.comment}</div>`:''}
       ${booking.clientContact?`<div><b>Контакт:</b> ${booking.clientContact}</div>`:''}
     </div>`;
@@ -2200,7 +2383,7 @@ function loadSpecialistBookings(specialistUid) {
           const tl={consultation:'Консультация',diagnostic:'Диагностика'};
           return`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh);border-left:3px solid #ff8f00">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px">${b.clientName||'Клиент'}</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${tl[b.type]||b.type} · ${new Date(b.date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${b.time}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHTML(meetingTypeLabel(b.type,b.typeName))} · ${new Date(b.date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${b.time}</div>
             ${b.comment?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-style:italic">"${b.comment}"</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px">
             <button onclick="window.openConfirmBooking('${b.id}')" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✓ Подтвердить</button>
@@ -2251,6 +2434,7 @@ async function loadPublicSlots() {
     const specDoc = specSnap.docs[0];
     const specUid = specDoc.id;
     window._pubSpecUid = specUid;
+    setMeetingTypes(specDoc.data().meetingTypes||[]);
 
     // Load schedule
     const schedSnap = await db.collection('schedule').doc(specUid).get();
@@ -2347,6 +2531,7 @@ async function sendPublicBooking() {
       date:pubSelectedDate,
       time:pubSelectedHour,
       type:g('pub-type')?.value||'consultation',
+      typeName:meetingTypeLabel(g('pub-type')?.value||'consultation'),
       comment:g('pub-comment')?.value||'',
       status:'pending',
       source:'public',
@@ -2496,7 +2681,7 @@ function buildMeetingCard(b,isPast,tl) {
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
   html+='<div style="flex:1"><div style="font-size:12px;color:var(--text2);margin-bottom:3px">'+dtStr+'</div>';
   html+='<div style="font-size:15px;font-weight:600;margin-bottom:3px">'+name+'</div>';
-  html+='<div style="font-size:12px;color:var(--text2)">'+(tl[b.type]||b.type)+'</div></div>';
+  html+='<div style="font-size:12px;color:var(--text2)">'+escHTML(meetingTypeLabel(b.type,b.typeName))+'</div></div>';
   if(!isPast) html+='<button onclick="openConfirmBooking(this.dataset.id)" data-id="'+b.id+'" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent2);background:transparent;color:var(--accent2);font-size:13px;cursor:pointer;flex-shrink:0;margin-left:10px">✏️ Изм.</button>';
   html+='</div>';
   if(b.meetLink) html+='<a href="'+b.meetLink+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;background:var(--accent);color:#fff;border-radius:8px;font-size:12px;text-decoration:none;font-weight:600">🎥 Google Meet</a>';
@@ -2514,7 +2699,7 @@ function buildPendingCard(b,tl) {
   html+='<div style="font-size:11px;color:#ff8f00;font-weight:600;margin-bottom:6px">⏳ Ожидает подтверждения</div>';
   html+='<div style="font-size:12px;color:var(--text2);margin-bottom:3px">'+dtStr+'</div>';
   html+='<div style="font-size:15px;font-weight:600;margin-bottom:3px">'+name+'</div>';
-  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px">'+(tl[b.type]||b.type)+(b.comment?' · «'+b.comment+'»':'')+'</div>';
+  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px">'+escHTML(meetingTypeLabel(b.type,b.typeName))+(b.comment?' · «'+b.comment+'»':'')+'</div>';
   html+='<div style="display:flex;gap:8px">';
   html+='<button onclick="openConfirmBooking(this.dataset.id)" data-id="'+b.id+'" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">✓ Подтвердить</button>';
   html+='<button onclick="rejectBookingDirect(this.dataset.id)" data-id="'+b.id+'" style="padding:8px 14px;border-radius:8px;border:1px solid #e63946;background:transparent;color:#e63946;font-size:13px;cursor:pointer">✗</button>';
@@ -2578,10 +2763,7 @@ function showBookingSlots(available) {
       <div style="max-height:280px;overflow-y:auto">${slotsHTML}</div>
     </div>
     <div class="ff"><label class="fl2">Формат встречи</label>
-      <select class="fsel" id="book-type">
-        <option value="consultation">Консультация</option>
-        <option value="diagnostic">Диагностика</option>
-      </select>
+      <select class="fsel" id="book-type">${meetingTypeOptions('consultation')}</select>
     </div>
     <div class="ff"><label class="fl2">Комментарий (необязательно)</label>
       <textarea class="fta" id="book-comment" placeholder="С чем хотите поработать..."></textarea>
@@ -2622,11 +2804,10 @@ function refreshCVWithMeetings(uid) {
     const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
     return db2-da;
   });
-  const tl={diagnostic:'Диагностика',consultation:'Консультация'};
   const tc={diagnostic:'t-d',consultation:'t-c'};
   const sessCard = s=>`<div class="sc" onclick="window.openSD('${s.id}')">
     <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
-    <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
+    <span class="st ${tc[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span>
     <div class="sr">${s.request||''}</div>
     ${s.summary?`<div style="font-size:13px;color:#2c7a4b;margin-top:6px;line-height:1.5">${s.summary.slice(0,100)}${s.summary.length>100?'...':''}</div>`:''}
   </div>`;
@@ -2653,7 +2834,7 @@ window.saveNC=saveNC; window.saveNS=saveNS; window.saveResult=saveResult;
 window.calcMx=calcMx; window.saveML=saveML; window.openML=openML;
 window.filterC=filterC; window.flipCard=flipCard; window.dNext=dNext; window.dPrev=dPrev;
 window.exitDiag=exitDiag; window.startDiag=startDiag; window.startClientDiag=startClientDiag;
-window.updSt=updSt; window.startDiagSteps=startDiagSteps; window.showChakraInfo=showChakraInfo; window.editSession=editSession; window.updateSession=updateSession; window.deleteSession=deleteSession; window.saveClientNote=saveClientNote; window.saveClientData=saveClientData; window.saveMyData=saveMyData; window.showCalendar=showCalendar; window.openPublicBooking=openPublicBooking; window.pubSelectSlot=pubSelectSlot; window.pubCalPrev=pubCalPrev; window.pubCalNext=pubCalNext; window.sendPublicBooking=sendPublicBooking; window.calPrevWeek=calPrevWeek; window.calNextWeek=calNextWeek; window.toggleSlot=toggleSlot; window.openBookingWithSlots=openBookingWithSlots; window.selectSlot=selectSlot; window.sendBooking=sendBooking; window.sendBooking=sendBooking; window.confirmBooking=confirmBooking; window.rejectBooking=rejectBooking; window.rejectBookingDirect=rejectBookingDirect; window.editBookingFromCal=editBookingFromCal; window.openConfirmBooking=openConfirmBooking; window.swTab=swTab; window.openNewSess=openNewSess;
+window.updSt=updSt; window.deleteClient=deleteClient; window.addMeetingType=addMeetingType; window.quickAddMeetingType=quickAddMeetingType; window.removeMeetingType=removeMeetingType; window.startDiagSteps=startDiagSteps; window.showChakraInfo=showChakraInfo; window.editSession=editSession; window.updateSession=updateSession; window.deleteSession=deleteSession; window.saveClientNote=saveClientNote; window.saveClientData=saveClientData; window.saveMyData=saveMyData; window.showCalendar=showCalendar; window.openPublicBooking=openPublicBooking; window.pubSelectSlot=pubSelectSlot; window.pubCalPrev=pubCalPrev; window.pubCalNext=pubCalNext; window.sendPublicBooking=sendPublicBooking; window.calPrevWeek=calPrevWeek; window.calNextWeek=calNextWeek; window.toggleSlot=toggleSlot; window.openBookingWithSlots=openBookingWithSlots; window.selectSlot=selectSlot; window.sendBooking=sendBooking; window.sendBooking=sendBooking; window.confirmBooking=confirmBooking; window.rejectBooking=rejectBooking; window.rejectBookingDirect=rejectBookingDirect; window.editBookingFromCal=editBookingFromCal; window.openConfirmBooking=openConfirmBooking; window.swTab=swTab; window.openNewSess=openNewSess;
 window.applySessionFilters=applySessionFilters; window.resetSessionFilters=resetSessionFilters;
 window.resetPassword=resetPassword;
 
