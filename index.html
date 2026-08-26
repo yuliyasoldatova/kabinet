@@ -107,7 +107,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .sc{background:var(--surface);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;box-shadow:var(--sh);cursor:pointer}
 .sd2{font-size:12px;color:var(--text2);margin-bottom:6px}
 .st{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px}
-.t-d{background:#e8f5e9;color:#2e7d32}.t-c{background:#e3f2fd;color:#1565c0}.t-g{background:#fce4ec;color:#880e4f}
+.t-d{background:#e8f5e9;color:#2e7d32}.t-c{background:#e3f2fd;color:#1565c0}
 .sr{font-size:14px;color:var(--text)}
 .sbar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);margin-top:8px;flex-wrap:wrap}
 .sdots{display:flex;gap:2px}
@@ -164,6 +164,29 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .lf{display:flex;gap:8px;align-items:center}
 .lf .finp{flex:1}
 .lb{padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:18px;cursor:pointer}
+
+/* Sessions table */
+.sessions-toolbar{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(160px,1fr) auto;gap:12px;align-items:end;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.sessions-filter label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.sessions-filter .fsel,.sessions-filter .finp{margin:0;background:var(--bg)}
+.sessions-reset{height:43px;padding:0 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sessions-reset:hover{border-color:var(--accent2);color:var(--accent)}
+.sessions-result-count{font-size:12px;color:var(--text2);margin:0 2px 10px}
+.sessions-table-wrap{width:100%;overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh)}
+.sessions-table{width:100%;min-width:860px;border-collapse:collapse;font-size:13px}
+.sessions-table th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:700;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+.sessions-table td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.sessions-table tbody tr{cursor:pointer;transition:background .15s}
+.sessions-table tbody tr:hover{background:#faf7f3}
+.sessions-table tbody tr:last-child td{border-bottom:none}
+.sessions-date-main{font-weight:600;white-space:nowrap}
+.sessions-date-time{font-size:11px;color:var(--text2);margin-top:2px}
+.sessions-client-name{font-weight:600;min-width:150px}
+.sessions-request{min-width:220px;max-width:360px;line-height:1.45}
+.sessions-state{white-space:nowrap;color:var(--text2)}
+.sessions-payment{white-space:nowrap;font-weight:700;color:var(--accent)}
+.sessions-open{border:none;background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
+@media(max-width:700px){.sessions-toolbar{grid-template-columns:1fr}.sessions-reset{width:100%}.sessions-table-wrap{border-radius:12px}}
 </style>
 </head>
 <body>
@@ -239,7 +262,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <div class="sec-title" style="color:#e65100">📅 Запросы на встречу</div>
       <div id="booking-requests-list"></div>
     </div>
-    <div id="dash-active-games" style="display:none;margin-bottom:20px"></div>
     <div class="sec-title">Последние клиенты</div>
     <div id="dcl"></div>
   </div>
@@ -275,7 +297,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <button class="bo" onclick="window.openNewSess()">+ Сессия</button>
       <button class="bf" onclick="window.startDiag()">▶ Диагностика</button>
     </div>
-    <button onclick="window.startGameFromProfile()" style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#7b5ea7,#9d4edd);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🎮 Запустить игру</button>
     <div style="margin-top:20px">
       <label class="fl2">Ссылка на встречу (Google Meet)</label>
       <div class="lf">
@@ -340,7 +361,23 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <!-- SESSIONS ALL -->
 <div id="s-sessions" class="screen">
   <div class="topbar"><div class="topbar-title">Сессии</div></div>
-  <div class="pp"><div id="asl"></div></div>
+  <div class="pp">
+    <div class="sessions-toolbar">
+      <div class="sessions-filter">
+        <label for="sessions-client-filter">Клиент</label>
+        <select id="sessions-client-filter" class="fsel" onchange="window.applySessionFilters()">
+          <option value="">Все клиенты</option>
+        </select>
+      </div>
+      <div class="sessions-filter">
+        <label for="sessions-date-filter">Дата сессии</label>
+        <input id="sessions-date-filter" class="finp" type="date" onchange="window.applySessionFilters()">
+      </div>
+      <button class="sessions-reset" onclick="window.resetSessionFilters()">Сбросить</button>
+    </div>
+    <div id="sessions-result-count" class="sessions-result-count"></div>
+    <div id="asl"></div>
+  </div>
 </div>
 
 <!-- SESSION DETAIL -->
@@ -422,7 +459,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <div id="specialist-code" style="font-size:32px;font-weight:700;letter-spacing:6px;color:var(--accent);font-family:'Cormorant Garamond',serif">—</div>
       <div style="font-size:12px;color:var(--text2);margin-top:6px">Дайте этот код клиенту при регистрации</div>
     </div>
-    <button onclick="window.openDeckEditor()" style="width:100%;margin-bottom:12px;padding:12px;border-radius:12px;border:1px solid var(--accent2);background:transparent;color:var(--accent2);font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🎮 Редактор колод игры</button>
     <button class="bo" style="width:100%" onclick="window.logout()">Выйти</button>
   </div>
 </div>
@@ -458,7 +494,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div id="cv-upcoming" style="margin-bottom:20px"></div>
 
     <button class="bf" style="width:100%;margin-bottom:12px;padding:15px;font-size:15px" onclick="window.startClientDiag()">✦ Пройти диагностику</button>
-    <button onclick="window.openGameScreen()" style="width:100%;margin-bottom:24px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#7b5ea7,#9d4edd);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🎮 Начать игру Поток жизни</button>
 
     <!-- Booking button -->
     <button class="bo" style="width:100%;margin-bottom:24px" onclick="window.openBookingWithSlots()">📅 Записаться на встречу</button>
@@ -513,7 +548,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
         <option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option>
       </select></div>
     </div>
-    <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option><option value="game">Игра</option></select></div>
+    <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select></div>
     <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="nsr" placeholder="Что беспокоит..."></textarea></div>
     <div class="ff"><label class="fl2">Заметки</label><textarea class="fta" id="nsn" placeholder="Наблюдения..."></textarea></div>
     <div class="ff"><label class="fl2">Инсайты</label><textarea class="fta" id="nsi" placeholder="Ключевые инсайты..."></textarea></div>
@@ -607,7 +642,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
         <select class="fsel" id="pub-type" style="background:var(--bg);color:var(--text)">
           <option value="consultation">Консультация</option>
           <option value="diagnostic">Диагностика</option>
-          <option value="game">Игра</option>
         </select>
       </div>
       <div class="ff" style="margin-bottom:20px">
@@ -626,175 +660,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
   </div>
 </div>
 
-
-<!-- GAME SCREEN -->
-<div id="s-game" class="screen" style="padding-bottom:0">
-  <div class="topbar" style="background:rgba(44,36,22,.95);border-bottom-color:#3d2f1a">
-    <div class="topbar-back" onclick="window.exitGame()" style="color:#fff;border-color:rgba(255,255,255,.3)">←</div>
-    <div class="topbar-title" style="color:#fff" id="game-title">Игра трансформации</div>
-    <div style="width:36px"></div>
-  </div>
-
-  <!-- Start screen -->
-  <div id="game-start" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:40px 24px;background:linear-gradient(160deg,#2c2416,#5c3d1e 50%,#8b5e3c);color:#fff;text-align:center">
-    <div id="game-board-preview" style="width:260px;height:260px;border-radius:50%;overflow:hidden;margin-bottom:20px;box-shadow:0 8px 40px rgba(0,0,0,.4);border:3px solid rgba(212,168,83,.4);background:#3d2f1a;display:flex;align-items:center;justify-content:center">
-      <img id="game-board-img" src="" style="width:100%;height:100%;object-fit:cover;display:none"/>
-      <div id="game-board-placeholder" style="text-align:center;color:rgba(212,168,83,.6)"><div style="font-size:48px">🪷</div></div>
-    </div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;margin-bottom:6px">Поток Жизни</div>
-    <div style="font-size:13px;opacity:.5;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">Игра трансформации</div>
-    <div style="font-size:14px;opacity:.65;line-height:1.8;max-width:300px;margin-bottom:32px">8 секторов · 18 энергий для финала<br>Рандомный сектор и карта на каждом шаге</div>
-    <div style="background:rgba(255,255,255,.1);border-radius:16px;padding:20px;margin-bottom:32px;width:100%;max-width:320px">
-      <div style="font-size:12px;opacity:.5;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Текущий счёт энергий</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300" id="game-energy-display">0</div>
-      <div style="font-size:12px;opacity:.5">из 18 для финала</div>
-    </div>
-    <button id="game-start-btn" onclick="window.startGame()" style="padding:16px 48px;border-radius:14px;border:none;background:linear-gradient(135deg,#c49a6c,#d4a853);color:#2c2416;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.5px">▶ Начать игру</button>
-    <div style="margin-top:16px;font-size:12px;opacity:.4" id="game-step-info"></div>
-  </div>
-
-  <!-- Game step screen -->
-  <div id="game-step" style="display:none">
-    <!-- Progress bar -->
-    <div style="background:linear-gradient(135deg,#2c2416,#5c3d1e);padding:16px 20px;color:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:13px;opacity:.7">Шаг <span id="gs-step">1</span> из 8</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;opacity:.6">Энергия:</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:#d4a853" id="gs-energy">0</span>
-          <span style="font-size:12px;opacity:.4">/ 18</span>
-        </div>
-      </div>
-      <!-- Energy bar -->
-      <div style="background:rgba(255,255,255,.15);border-radius:20px;height:8px;overflow:hidden">
-        <div id="gs-ebar" style="height:100%;background:linear-gradient(90deg,#c49a6c,#d4a853);border-radius:20px;transition:width .5s;width:0%"></div>
-      </div>
-    </div>
-
-    <!-- Sector card -->
-    <div style="padding:20px">
-      <div id="gs-sector-card" style="border-radius:16px;overflow:hidden;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.15)">
-        <!-- Sector header -->
-        <div id="gs-sector-header" style="padding:20px;color:#fff">
-          <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Сектор <span id="gs-sector-num"></span></div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300" id="gs-sector-name"></div>
-          <div style="font-size:13px;opacity:.75;margin-top:6px;line-height:1.5" id="gs-sector-desc"></div>
-          <div id="gs-sector-question" style="display:none;margin-top:10px;font-size:14px;opacity:.9;font-style:italic;line-height:1.5;border-top:1px solid rgba(255,255,255,.2);padding-top:10px"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 14px">
-            <span style="font-size:13px;opacity:.8">Энергия карты:</span>
-            <span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#d4a853" id="gs-card-energy">—</span>
-            <span style="font-size:12px;opacity:.5">(откроется после карты)</span>
-            <button onclick="window.editCardEnergy()" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:transparent;color:rgba(255,255,255,.7);font-size:11px;cursor:pointer;margin-left:auto">✏️</button>
-          </div>
-        </div>
-        <!-- Card display -->
-        <div style="background:#f7f3ee;padding:16px">
-          <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Карта сессии</div>
-          <div id="gs-card-area" onclick="window.flipGameCard()" style="width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;cursor:pointer;position:relative;background:#e8e0d4;display:flex;align-items:center;justify-content:center">
-            <div id="gs-card-placeholder" style="text-align:center;color:#c49a6c">
-              <div style="font-size:40px;margin-bottom:8px">🃏</div>
-              <div style="font-size:13px">Нажмите чтобы открыть</div>
-            </div>
-            <img id="gs-card-img" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none" src="" alt="">
-            <div id="gs-card-deck-label" style="position:absolute;top:10px;right:10px;display:none"></div>
-          </div>
-          <div id="gs-card-name" style="font-size:13px;color:var(--text2);margin-top:8px;font-style:italic;display:none"></div>
-        </div>
-      </div>
-
-      <!-- MAK trigger button -->
-      <button id="gs-mak-btn" onclick="window.drawMakCard()" style="display:none;width:100%;padding:12px;border-radius:12px;border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:16px"></button>
-
-      <!-- Notes -->
-      <div style="margin-bottom:20px">
-        <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px">Заметки к шагу</label>
-        <textarea id="gs-note" style="width:100%;min-height:80px;padding:12px 16px;border:1px solid var(--border);border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);resize:vertical;outline:none" placeholder="Запишите инсайты, наблюдения..."></textarea>
-      </div>
-
-      <!-- Next button -->
-      <button id="gs-next-btn" onclick="window.gameNext()" style="width:100%;padding:15px;border-radius:12px;border:none;background:linear-gradient(135deg,#c49a6c,#d4a853);color:#2c2416;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Следующий шаг →</button>
-    </div>
-  </div>
-
-  <!-- Final screen (sector 9) -->
-  <div id="game-final" style="display:none;padding:20px">
-    <div style="background:linear-gradient(135deg,#2c2416,#5c3d1e);border-radius:16px;padding:24px;color:#fff;text-align:center;margin-bottom:24px">
-      <div style="font-size:40px;margin-bottom:12px">🌟</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;margin-bottom:8px">Финальный сектор</div>
-      <div style="font-size:14px;opacity:.7;margin-bottom:16px">Вы набрали 18 энергий и достигли сектора Интеграции</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:48px;color:#d4a853" id="gf-energy"></div>
-      <div style="font-size:12px;opacity:.5;margin-top:4px">энергий собрано</div>
-    </div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:16px">3 карты интеграции</div>
-    <div id="gf-cards" style="margin-bottom:24px"></div>
-    <div style="margin-bottom:20px">
-      <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px">Итоговые заметки</label>
-      <textarea id="gf-note" style="width:100%;min-height:100px;padding:12px 16px;border:1px solid var(--border);border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);resize:vertical;outline:none" placeholder="Итоги игры, ключевые инсайты..."></textarea>
-    </div>
-    <button onclick="window.saveGame()" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#c49a6c,#d4a853);color:#2c2416;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">✦ Сохранить как сессию</button>
-    <button onclick="window.exitGame()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Nunito',sans-serif;font-size:14px;cursor:pointer">Выйти без сохранения</button>
-  </div>
-</div>
-
-
-<!-- DECK EDITOR SCREEN -->
-<div id="s-deck-editor" class="screen">
-  <div class="topbar">
-    <div class="topbar-back" onclick="window.goBack()" style="color:#2c2416">←</div>
-    <div class="topbar-title">Редактор колод</div>
-    <div style="width:36px"></div>
-  </div>
-  <div class="pp">
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Введите текст карточек — каждая с новой строки. Для триггера МАК-карты напишите в тексте: <b>«Вытяни карту из колоды Моменты»</b> (или Ресурс/Страхи)</div>
-    <div class="ff" style="margin-bottom:16px">
-      <label class="fl2">Выберите колоду</label>
-      <select class="fsel" id="de-deck-select" onchange="window.loadDeckForEdit()">
-        <option value="deck1">1 · База</option>
-        <option value="deck2">2 · Семья</option>
-        <option value="deck3">3 · Самореализация</option>
-        <option value="deck4">4 · Изобилие</option>
-        <option value="deck5">5 · Духовность</option>
-        <option value="deck6">6 · Социум</option>
-        <option value="deck7">7 · Знания</option>
-        <option value="deck8">8 · Удовольствия</option>
-        <option value="deck9">9 · Миссия (финал)</option>
-        <option value="deck10">10 · Поток (50 карт)</option>
-        <option value="poslaniya">— · Послания высших сил</option>
-      </select>
-    </div>
-    <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-      <label class="fl2" style="margin:0">Карточки <span id="de-count" style="color:var(--accent2)"></span></label>
-      <button onclick="window.clearDeckEditor()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;text-decoration:underline">Очистить</button>
-    </div>
-    <textarea id="de-cards-input" style="width:100%;min-height:300px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);resize:vertical;outline:none;line-height:1.8" placeholder="Каждая карточка с новой строки:&#10;&#10;Доверяй своему пути&#10;Отпусти контроль&#10;Вытяни карту из колоды Моменты&#10;Ты сильнее чем думаешь" oninput="window.updateDeckCount()"></textarea>
-    <div style="margin-top:8px;background:#f0ebe4;border-radius:10px;padding:12px;font-size:13px">
-      <div style="font-weight:600;margin-bottom:6px">📋 Формат строки (через |):</div>
-      <code style="font-size:12px;line-height:1.8">Текст на карте | энергия | URL картинки</code>
-      <div style="margin-top:8px;color:var(--text2);font-size:12px">Энергия и URL необязательны. Или используйте ИИ-распознавание ↓</div>
-    </div>
-    <div style="margin-top:12px;background:linear-gradient(135deg,#f0ebe4,#e8e0d4);border-radius:12px;padding:16px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">💡 Как добавить карточки с изображениями</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
-        Для распознавания карточек с изображениями:<br>
-        1. Загрузите карточки на Cloudinary<br>
-        2. Отправьте URL изображений в чат с Claude<br>
-        3. Claude распознает текст и энергию и вернёт готовый список<br>
-        4. Вставьте список сюда в поле выше
-      </div>
-      <div style="background:#fff;border-radius:8px;padding:12px;font-size:12px;color:var(--text2)">
-        <b>Формат строки:</b><br>
-        <code>Текст карты | энергия | https://cloudinary.com/...</code><br><br>
-        <b>Пример:</b><br>
-        <code>Подарок судьбы | 2 | https://res.cloudinary.com/abc/image.jpg</code>
-      </div>
-    </div>
-    <button onclick="window.saveDeck()" class="bf" style="width:100%;margin-top:16px">💾 Сохранить колоду</button>
-    <div style="margin-top:20px;background:var(--surface);border-radius:12px;padding:16px;box-shadow:var(--sh)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Статистика колод</div>
-      <div id="de-stats"></div>
-    </div>
-  </div>
-</div>
 
 <nav class="bnav" id="bnav" style="display:none">
   <button class="ni active" id="nav-dash" onclick="window.navTo('dash',this)"><span class="ni-icon">🏠</span><span class="ni-label">Главная</span></button>
@@ -836,7 +701,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <select class="fsel" id="book-type">
         <option value="consultation">Консультация</option>
         <option value="diagnostic">Диагностика</option>
-        <option value="game">Игра</option>
       </select>
     </div>
     <div class="ff">
@@ -1162,8 +1026,6 @@ auth.onAuthStateChanged(async user => {
         const sl=g('s-login'); if(sl) sl.remove(); // Remove login from DOM completely
         const bnav=g('bnav'); if(bnav) bnav.style.display='flex';
         showS('s-dash'); startSpecialistListeners(); rDash();
-        startSpecialistGameListener();
-        cleanupStaleSessions();
       } else {
         const sl=g('s-login'); if(sl) sl.remove(); // Remove login from DOM completely
         showCV(user.uid); startClientListeners(user.uid);
@@ -1224,7 +1086,7 @@ function stopListeners() {
 function showS(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const el=g(id); if(el) el.classList.add('active');
-  const noNav=['s-login','s-diag','s-result','s-cv','s-chakra','s-calendar','s-public-book','s-game','s-deck-editor'];
+  const noNav=['s-login','s-diag','s-result','s-cv','s-chakra','s-calendar','s-public-book'];
   const bnav=g('bnav');
   if(bnav) bnav.style.display=(noNav.includes(id)||!CU)?'none':'flex';
   window.scrollTo(0,0);
@@ -1344,133 +1206,7 @@ function openCP(clientId) {
   const cl2=clients.find(c=>c.id===clientId);
   if(cl2?.clientUid) {
     loadClientBookingsForProfile(cl2.clientUid);
-    checkActiveGame(cl2.clientUid);
   } else {const el=g('client-upcoming-meeting');if(el)el.innerHTML='';}
-}
-
-async function checkActiveGame(clientUid) {
-  try {
-    const snap = await db.collection('gameSessions')
-      .where('clientUid','==',clientUid)
-      .where('status','==','active')
-      .limit(1).get();
-    if(!snap.empty) {
-      const gameDoc = snap.docs[0];
-      const gameData = gameDoc.data();
-      const el = g('client-upcoming-meeting');
-      if(el) {
-        el.innerHTML = `<div style="background:linear-gradient(135deg,#7b5ea7,#9d4edd);border-radius:12px;padding:14px;color:#fff;margin-bottom:12px">
-          <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🎮 Игра в процессе</div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="font-size:14px;font-weight:600">Поток Жизни</div>
-              <div style="font-size:12px;opacity:.7">Шаг ${gameData.step||0} · Энергия: ${gameData.energy||0}/18</div>
-            </div>
-            <button onclick="window.joinGameAsSpec('${gameDoc.id}')" style="padding:8px 14px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Наблюдать →</button>
-          </div>
-        </div>`;
-      }
-    }
-  } catch(e){}
-}
-
-function joinGameAsSpec(gameId) {
-  // Open game in observer mode
-  gameState.gameId = gameId;
-  gameState.observerMode = true;
-  g('game-start').style.display = 'none';
-  g('game-step').style.display = 'none';
-  g('game-final').style.display = 'none';
-  const prev = document.querySelector('.screen.active');
-  if(prev) screenHistory.push(prev.id);
-  showS('s-game');
-  // Show observer panel
-  showGameObserver(gameId);
-}
-
-function showGameObserver(gameId) {
-  if(gameUnsubscribe) gameUnsubscribe();
-  // Show same game screen as client
-  g('game-start').style.display = 'none';
-  g('game-step').style.display = 'block';
-  g('game-final').style.display = 'none';
-
-  // Add observer badge
-  const topbar = document.querySelector('#s-game .topbar');
-  if(topbar && !g('obs-badge')) {
-    const badge = document.createElement('div');
-    badge.id = 'obs-badge';
-    badge.style.cssText = 'position:absolute;top:56px;left:0;right:0;background:#7b5ea7;color:#fff;text-align:center;font-size:11px;padding:4px;letter-spacing:1px;z-index:5';
-    badge.textContent = '👁 РЕЖИМ НАБЛЮДЕНИЯ · Синхронизация в реальном времени';
-    topbar.parentNode.insertBefore(badge, topbar.nextSibling);
-  }
-
-  // Disable interactive elements for observer
-  const nextBtn = g('gs-next-btn');
-  if(nextBtn) { nextBtn.disabled=true; nextBtn.style.opacity='0.5'; nextBtn.textContent='Управляет клиент'; }
-  const cardArea = g('gs-card-area');
-  if(cardArea) { cardArea.style.cursor='default'; cardArea.onclick=null; }
-
-  // Listen and mirror game state
-  gameUnsubscribe = db.collection('gameSessions').doc(gameId).onSnapshot(snap=>{
-    if(!snap.exists) return;
-    const d = snap.data();
-
-    // Update progress
-    const energy = d.energy||0;
-    const step = d.step||0;
-    const gs_e = g('gs-energy'); if(gs_e) gs_e.textContent=energy;
-    const gs_eb = g('gs-ebar'); if(gs_eb) gs_eb.style.width=Math.min(100,(energy/18)*100)+'%';
-    const gs_s = g('gs-step'); if(gs_s) gs_s.textContent=step;
-
-    // Mirror current sector
-    if(d.currentSector) {
-      const sec = d.currentSector;
-      const h = g('gs-sector-header'); if(h) h.style.background=sec.color||'var(--accent)';
-      const sn = g('gs-sector-num'); if(sn) sn.textContent=sec.num||'';
-      const name = g('gs-sector-name'); if(name) name.textContent=sec.name||'';
-      const ce = g('gs-card-energy'); if(ce) ce.textContent=sec.energy>0?'+'+sec.energy:'—';
-    }
-
-    // Mirror current card
-    if(d.currentCard && d.cardFlipped) {
-      const c = d.currentCard;
-      const cardArea2 = g('gs-card-area');
-      if(cardArea2) {
-        if(c.img) {
-          cardArea2.style.background='#f0ebe4';
-          cardArea2.innerHTML=`<img src="${c.img}" style="width:100%;height:100%;object-fit:cover;border-radius:12px"/>`;
-        } else if(c.text) {
-          cardArea2.style.background='#f7f3ee';
-          cardArea2.style.display='flex';
-          cardArea2.style.alignItems='center';
-          cardArea2.style.justifyContent='center';
-          cardArea2.innerHTML=`<div style="padding:24px;text-align:center"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;line-height:1.7;color:#2c2416">${c.text}</div></div>`;
-        }
-        const lbl=g('gs-card-deck-label');if(lbl)lbl.style.display='none';
-        const ph=g('gs-card-placeholder');
-        if(ph) ph.style.display='none';
-      }
-      // Show energy from card
-      const ce=g('gs-card-energy');
-      if(ce&&c.energy>0) ce.textContent='+'+c.energy;
-    } else if(d.currentCard && !d.cardFlipped) {
-      // Card not yet flipped - show placeholder
-      const cardArea2=g('gs-card-area');
-      if(cardArea2) {
-        const sec=d.currentSector||{};
-        cardArea2.style.background=sec.color||'#2c2416';
-        cardArea2.innerHTML=`<div style="text-align:center;color:rgba(255,255,255,.7)"><div style="font-size:40px;margin-bottom:8px">🃏</div><div style="font-size:13px">Клиент открывает карту...</div></div>`;
-      }
-    }
-
-    // Check if game finished
-    if(d.status==='finished') {
-      const ob=g('obs-badge');if(ob)ob.remove();
-      showS('s-profile');
-      toast('Игра завершена');
-    }
-  });
 }
 
 function swTabTo(id) {
@@ -1533,8 +1269,8 @@ function dateStr(d,time) {
 }
 
 function scHTML(s) {
-  const tm={diagnostic:'t-d',consultation:'t-c',game:'t-g'};
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
+  const tm={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
   const b=parseInt(s.stateBefore)||0,a=parseInt(s.stateAfter)||0;
   const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${s.payment}₸</span>`:'';
   return `<div class="sc" onclick="window.openSD('${s.id}')">
@@ -1602,24 +1338,85 @@ async function saveNS() {
 }
 
 // ===== ALL SESSIONS =====
+function getSessionDateKey(s) {
+  if(s.sessionDate) return s.sessionDate;
+  if(!s.date) return '';
+  const dt=s.date?.toDate?s.date.toDate():new Date(s.date);
+  if(Number.isNaN(dt.getTime())) return '';
+  const y=dt.getFullYear();
+  const m=String(dt.getMonth()+1).padStart(2,'0');
+  const d=String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+
+function escHTML(value) {
+  return String(value??'').replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+
+function fillSessionClientFilter() {
+  const sel=g('sessions-client-filter'); if(!sel) return;
+  const current=sel.value;
+  const linkedIds=new Set(sessions.map(s=>s.clientId).filter(Boolean));
+  const items=clients.filter(c=>linkedIds.has(c.id)).sort((a,b)=>(a.fullName||'').localeCompare(b.fullName||'','ru'));
+  sel.innerHTML='<option value="">Все клиенты</option>'+items.map(c=>`<option value="${escHTML(c.id)}">${escHTML(c.fullName||'Без имени')}</option>`).join('');
+  if(items.some(c=>c.id===current)) sel.value=current;
+}
+
 function rAllSess() {
   const list=g('asl'); if(!list) return;
-  const sorted=[...sessions].sort((a,b)=>{
+  fillSessionClientFilter();
+  const clientId=g('sessions-client-filter')?.value||'';
+  const dateFilter=g('sessions-date-filter')?.value||'';
+  const filtered=sessions.filter(s=>(!clientId||s.clientId===clientId)&&(!dateFilter||getSessionDateKey(s)===dateFilter));
+  const sorted=[...filtered].sort((a,b)=>{
     const da=a.date?.toDate?a.date.toDate():new Date(a.date||0);
     const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
     return db2-da;
   });
-  list.innerHTML=sorted.length?sorted.map(s=>{
-    const cl=clients.find(c=>c.id===s.clientId);
-    return `<div style="font-size:12px;color:var(--text2);margin:16px 0 4px">${cl?.fullName||''}</div>${scHTML(s)}`;
-  }).join(''):'<div class="empty"><div class="ei">📋</div><div class="et">Сессий пока нет</div></div>';
+  const count=g('sessions-result-count');
+  if(count) count.textContent=`Показано: ${sorted.length} из ${sessions.length}`;
+  if(!sorted.length){
+    list.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">Сессии не найдены</div></div>';
+    return;
+  }
+  const typeLabel={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
+  const typeClass={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
+  list.innerHTML=`<div class="sessions-table-wrap"><table class="sessions-table">
+    <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Запрос</th><th>Состояние</th><th>Оплата</th><th></th></tr></thead>
+    <tbody>${sorted.map(s=>{
+      const cl=clients.find(c=>c.id===s.clientId);
+      const dt=s.date?.toDate?s.date.toDate():new Date(s.date||0);
+      const dateText=!Number.isNaN(dt.getTime())?dt.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}):(s.sessionDate||'—');
+      const timeText=s.sessionTime||(!Number.isNaN(dt.getTime())?dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'');
+      const before=s.stateBefore||'—', after=s.stateAfter||'—';
+      const payment=s.payment!==''&&s.payment!=null&&Number(s.payment)!==0?`${escHTML(s.payment)} ₸`:'—';
+      return `<tr onclick="window.openSD('${escHTML(s.id)}')">
+        <td><div class="sessions-date-main">${escHTML(dateText)}</div><div class="sessions-date-time">${escHTML(timeText)}</div></td>
+        <td><div class="sessions-client-name">${escHTML(cl?.fullName||'Клиент не найден')}</div></td>
+        <td><span class="st ${typeClass[s.type]||'t-c'}">${escHTML(typeLabel[s.type]||'Сессия')}</span></td>
+        <td><div class="sessions-request">${escHTML(s.request||'—')}</div></td>
+        <td><div class="sessions-state">${escHTML(before)} → ${escHTML(after)}</div></td>
+        <td><div class="sessions-payment">${payment}</div></td>
+        <td><button class="sessions-open" onclick="event.stopPropagation();window.openSD('${escHTML(s.id)}')">Открыть →</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function applySessionFilters(){ rAllSess(); }
+function resetSessionFilters(){
+  const c=g('sessions-client-filter'); if(c)c.value='';
+  const d=g('sessions-date-filter'); if(d)d.value='';
+  rAllSess();
 }
 
 function openSD(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
   screenHistory.push(document.querySelector('.screen.active')?.id||'s-sessions');
   showS('s-sessdet');
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
   const cl=clients.find(c=>c.id===s.clientId);
   const isSpec=CU?.role==='specialist';
   const sdc=g('sdc'); if(!sdc) return;
@@ -2103,8 +1900,8 @@ function refreshCV(uid) {
   // Sessions list
   const cvs=g('cvs');
   if(cvs)cvs.innerHTML=sorted.length?sorted.map(s=>{
-    const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
-    const tc={diagnostic:'t-d',consultation:'t-c',game:'t-g'};
+    const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
+    const tc={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
     return`<div class="sc" onclick="window.openSD('${s.id}')">
       <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
       <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
@@ -2162,7 +1959,7 @@ function showUpcomingMeeting(bookings, isClient) {
 
   if(isClient) {
     const el=g('cv-upcoming'); if(!el) return;
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
     let html='';
     // Show all upcoming confirmed meetings
     if(upcoming.length) {
@@ -2207,7 +2004,7 @@ function showClientUpcomingMeeting(bookings) {
   const pending=bookings.filter(b=>b.status==='pending');
   if(upcoming.length) {
     const m=upcoming[0];
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
     el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
       <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
       <div style="font-size:14px;font-weight:600">${new Date(m.date+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
@@ -2215,7 +2012,7 @@ function showClientUpcomingMeeting(bookings) {
     </div>`;
   } else if(pending.length) {
     const p=pending[0];
-    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+    const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
     el.innerHTML=`<div style="background:#fff8e1;border-radius:12px;padding:14px;border-left:3px solid #ff8f00">
       <div style="font-size:11px;color:#ff8f00;font-weight:600;margin-bottom:4px">⏳ Запрос на встречу</div>
       <div style="font-size:14px;font-weight:600">${new Date(p.date+'T'+p.time).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${p.time}</div>
@@ -2228,7 +2025,7 @@ function showClientUpcomingMeeting(bookings) {
 function openConfirmBooking(bookingId) {
   const booking=(window._currentBookings||[]).find(b=>b.id===bookingId);
   if(!booking) { toast('Бронь не найдена'); return; }
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
   const isEdit = booking.status==='confirmed';
   const title=g('confirm-modal-title');
   if(title) title.textContent=isEdit?'Редактировать встречу':'Подтвердить встречу';
@@ -2311,7 +2108,7 @@ function loadSpecialistBookings(specialistUid) {
       if(bookings.length) {
         section.style.display='block';
         list.innerHTML=bookings.map(b=>{
-          const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+          const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
           return`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh);border-left:3px solid #ff8f00">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px">${b.clientName||'Клиент'}</div>
             <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${tl[b.type]||b.type} · ${new Date(b.date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${b.time}</div>
@@ -2584,7 +2381,7 @@ function calNextWeek() { calWeekOffset++; renderCalendar(); }
 
 function renderSpecialistMeetings() {
   const now = new Date();
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
   const upcoming = calBookings.filter(b=>b.status==='confirmed'&&new Date(b.date+'T'+(b.time||'00:00'))>now)
     .sort((a,x)=>new Date(a.date+'T'+(a.time||'00:00'))-new Date(x.date+'T'+(x.time||'00:00')));
   const pending2 = calBookings.filter(b=>b.status==='pending')
@@ -2601,7 +2398,7 @@ function renderSpecialistMeetings() {
 }
 
 function buildMeetingCard(b,isPast,tl) {
-  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
   const dt=new Date(b.date+'T'+(b.time||'12:00'));
   const dtStr=dt.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})+' в '+(b.time||'—');
   const cl=clients.find(c=>c.clientUid===b.clientUid);
@@ -2620,7 +2417,7 @@ function buildMeetingCard(b,isPast,tl) {
 }
 
 function buildPendingCard(b,tl) {
-  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+  tl=tl||{consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
   const dt=new Date(b.date+'T'+(b.time||'12:00'));
   const dtStr=dt.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})+' в '+(b.time||'—');
   const name=b.clientName||b.clientContact||'Клиент';
@@ -2666,7 +2463,7 @@ async function openBookingWithSlots() {
 
 function showBookingSlots(available) {
   const modal = g('m-book'); if(!modal) return;
-  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Игра'};
+  const tl={consultation:'Консультация',diagnostic:'Диагностика',game:'Сессия'};
   let slotsHTML = '';
   if(available.length===0) {
     slotsHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Нет доступных слотов.<br>Обратитесь к специалисту напрямую.</div>';
@@ -2695,7 +2492,6 @@ function showBookingSlots(available) {
       <select class="fsel" id="book-type">
         <option value="consultation">Консультация</option>
         <option value="diagnostic">Диагностика</option>
-        <option value="game">Игра</option>
       </select>
     </div>
     <div class="ff"><label class="fl2">Комментарий (необязательно)</label>
@@ -2737,8 +2533,8 @@ function refreshCVWithMeetings(uid) {
     const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
     return db2-da;
   });
-  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Игра'};
-  const tc={diagnostic:'t-d',consultation:'t-c',game:'t-g'};
+  const tl={diagnostic:'Диагностика',consultation:'Консультация',game:'Сессия'};
+  const tc={diagnostic:'t-d',consultation:'t-c',game:'t-c'};
   const sessCard = s=>`<div class="sc" onclick="window.openSD('${s.id}')">
     <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
     <span class="st ${tc[s.type]||'t-c'}">${tl[s.type]||s.type}</span>
@@ -2749,872 +2545,6 @@ function refreshCVWithMeetings(uid) {
   if(cvs) cvs.innerHTML=sorted.length?sorted.map(sessCard).join(''):'<div class="empty"><div class="ei">📋</div><div class="et">Сессий пока нет</div></div>';
 }
 
-
-// ===== GAME OF TRANSFORMATION =====
-// Игровые колоды - загружаются из Firestore
-let GAME_DECKS = {
-  deck1:[], deck2:[], deck3:[], deck4:[], deck5:[],
-  deck6:[], deck7:[], deck8:[], deck9:[], deck10:[]
-};
-const DECK_NAMES = {
-  poslaniya:'Послания',
-  deck1:'База', deck2:'Семья', deck3:'Самореализация',
-  deck4:'Изобилие', deck5:'Духовность', deck6:'Социум',
-  deck7:'Знания', deck8:'Удовольствия', deck9:'Миссия', deck10:'Поток'
-};
-// Exact trigger phrases from game cards
-const MAK_TRIGGERS = [
-  {phrase: 'вытяните карту из колоды «моменты»', deck: 'momenty', label: 'Моменты'},
-  {phrase: 'вытяните карту из колоды "моменты"', deck: 'momenty', label: 'Моменты'},
-  {phrase: 'вытяните карту из колоды «ресурс»', deck: 'resurs', label: 'Ресурс'},
-  {phrase: 'вытяните карту из колоды "ресурс"', deck: 'resurs', label: 'Ресурс'},
-  {phrase: 'вытяните карту из колоды «страхи»', deck: 'strahi', label: 'Страхи'},
-  {phrase: 'вытяните карту из колоды "страхи"', deck: 'strahi', label: 'Страхи'},
-  {phrase: 'получите послание высших сил', deck: 'poslaniya', label: 'Послания'},
-  // Fallbacks
-  {phrase: 'вытяните карту из колоды ресурс', deck: 'resurs', label: 'Ресурс'},
-  {phrase: 'вытяните карту из колоды моменты', deck: 'momenty', label: 'Моменты'},
-];
-
-// Poslaniya deck - loaded from Cloudinary like other MAK decks
-// URL pattern: will be set when images uploaded
-const POSLANIYA_IMGS = []; // TODO: fill with Cloudinary URLs when uploaded
-
-const SECTORS = [
-  {num:1, name:'База', desc:'Моя база — дом, тело, безопасность, стабильность', color:'linear-gradient(135deg,#7cb87c,#4a9e4a)', energy:2, deck:'deck1', cover:'https://res.cloudinary.com/djqgj6rsw/image/upload/v1778144339/1_cover.png',
-   q:'Что является моей базой сейчас? Где я чувствую опору?'},
-  {num:2, name:'Семья', desc:'Мои близкие, род, отношения с семьёй', color:'linear-gradient(135deg,#e84393,#c2185b)', energy:2, deck:'deck2',
-   q:'Какую роль семья играет в моей жизни? Что я хочу изменить?'},
-  {num:3, name:'Самореализация', desc:'Мой потенциал, таланты, профессиональный путь', color:'linear-gradient(135deg,#f4a261,#e76f51)', energy:2, deck:'deck3',
-   q:'В чём я реализую себя? Где ещё хочу раскрыться?'},
-  {num:4, name:'Изобилие', desc:'Деньги, ресурсы, материальный поток', color:'linear-gradient(135deg,#d4a853,#c49a6c)', energy:2, deck:'deck4',
-   q:'Как я отношусь к изобилию? Что блокирует мой поток?'},
-  {num:5, name:'Духовность', desc:'Связь с высшим, смысл, внутренний путь', color:'linear-gradient(135deg,#7b5ea7,#9d4edd)', energy:2, deck:'deck5',
-   q:'Что даёт мне ощущение смысла? Какая высшая сила рядом?'},
-  {num:6, name:'Социум', desc:'Общество, круг общения, вклад в мир', color:'linear-gradient(135deg,#2980b9,#1565c0)', energy:2, deck:'deck6',
-   q:'Как я взаимодействую с миром? Что я даю обществу?'},
-  {num:7, name:'Знания', desc:'Учёба, мудрость, внутренний рост', color:'linear-gradient(135deg,#b8b020,#8a9a00)', energy:3, deck:'deck7',
-   q:'Чему я учусь? Какие знания веду меня вперёд?'},
-  {num:8, name:'Удовольствия', desc:'Радость, наслаждение, то что наполняет меня', color:'linear-gradient(135deg,#a0c4ff,#5b9bd5)', energy:3, deck:'deck8',
-   q:'Что приносит мне радость? Позволяю ли я себе наслаждаться?'},
-  {num:9, name:'Миссия', desc:'Финал. Твоя высшая цель. Всё сошлось.', color:'linear-gradient(135deg,#2c2416,#8b5e3c,#d4a853)', energy:0, deck:'deck9'}
-];
-
-// Board image (upload to Cloudinary to replace)
-const GAME_BOARD_IMG = ''; // TODO: вставить URL с Cloudinary
-
-let gameState = {
-  active: false,
-  step: 0, // 0-7 = sectors 1-8, 8 = sector 9 (final)
-  energy: 0,
-  steps: [], // [{sector, card, note, energyBefore, energyAfter}]
-  currentSector: null,
-  currentCard: null,
-  cardFlipped: false,
-  clientId: null,
-  clientUid: null
-};
-
-function startGameFromProfile() {
-  gameState.clientId = CID;
-  const cl = clients.find(c=>c.id===CID);
-  gameState.clientUid = cl?.clientUid || null;
-  openGameScreen();
-}
-
-
-
-// ===== AI CARD RECOGNITION =====
-async function aiRecognizeCards() {
-  const urlsText = g('de-ai-urls')?.value?.trim();
-  if(!urlsText) { toast('Введите URL изображений'); return; }
-
-  const urls = urlsText.split('\n').map(u=>u.trim()).filter(u=>u.startsWith('http'));
-  if(!urls.length) { toast('Не найдено валидных URL'); return; }
-
-  const btn = g('btn-ai-recognize');
-  const progress = g('ai-progress');
-  if(btn) { btn.disabled=true; btn.textContent='⏳ Распознаём...'; }
-  if(progress) { progress.style.display='block'; progress.textContent='Обрабатываем 0 из '+urls.length+' карточек...'; }
-
-  const results = [];
-  for(let i=0; i<urls.length; i++) {
-    if(progress) progress.textContent = `Обрабатываем ${i+1} из ${urls.length}...`;
-    try {
-      const result = await recognizeCardImage(urls[i]);
-      results.push({ text: result.text||'', energy: result.energy||0, img: urls[i] });
-    } catch(e) {
-      results.push({ text: 'Ошибка распознавания', energy: 0, img: urls[i] });
-    }
-  }
-
-  // Add to textarea
-  const ta = g('de-cards-input');
-  if(ta) {
-    const existing = ta.value.trim();
-    const newLines = results.map(r => `${r.text}${r.energy?' | '+r.energy:''} | ${r.img}`).join('\n');
-    ta.value = existing ? existing + '\n' + newLines : newLines;
-    updateDeckCount();
-  }
-
-  if(btn) { btn.disabled=false; btn.textContent='✨ Распознать через ИИ'; }
-  if(progress) progress.textContent = `✓ Распознано ${results.length} карточек`;
-  toast('Готово! Проверьте и отредактируйте при необходимости ✦');
-}
-
-async function recognizeCardImage(imgUrl) {
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'url', url: imgUrl }
-            },
-            {
-              type: 'text',
-              text: 'Это карточка настольной игры. Прочитай ВЕСЬ текст на карточке (кроме слова в самом верху крупными буквами — это название колоды). Найди число в кружке — это энергия карты. Ответь ТОЛЬКО в формате JSON: {"text": "полный текст карточки", "energy": число_энергии}. Если числа нет — energy: 0.'
-            }
-          ]
-        }]
-      })
-    });
-
-    if(!response.ok) throw new Error('API error: ' + response.status);
-    const data = await response.json();
-    const rawText = data.content?.map(c=>c.text||'').join('') || '';
-    const clean = rawText.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
-    return { text: parsed.text||'', energy: parseInt(parsed.energy)||0 };
-  } catch(e) {
-    console.error('Card recognition error:', e);
-    return { text: '', energy: 0 };
-  }
-}
-
-// ===== DECK EDITOR =====
-let allGameDecksData = {};
-
-async function openDeckEditor() {
-  const prev = document.querySelector('.screen.active');
-  if(prev) screenHistory.push(prev.id);
-  showS('s-deck-editor');
-  // Load all decks from Firestore
-  try {
-    const snap = await db.collection('gameDecks').doc('decks').get();
-    allGameDecksData = snap.exists ? snap.data() : {};
-    GAME_DECKS = {...GAME_DECKS, ...Object.fromEntries(
-      Object.keys(allGameDecksData).map(k=>[k, allGameDecksData[k]])
-    )};
-  } catch(e){}
-  loadDeckForEdit();
-  renderDeckStats();
-}
-
-function loadDeckForEdit() {
-  const key = g('de-deck-select')?.value || 'deck1';
-  const cards = allGameDecksData[key] || [];
-  const ta = g('de-cards-input');
-  if(ta) ta.value = cards.map(c=>c.text||c.d||'').filter(Boolean).join('\n');
-  updateDeckCount();
-}
-
-function updateDeckCount() {
-  const ta = g('de-cards-input');
-  const cnt = g('de-count');
-  if(!ta||!cnt) return;
-  const count = ta.value.split('\n').filter(l=>l.trim()).length;
-  cnt.textContent = '(' + count + ' карт)';
-}
-
-function clearDeckEditor() {
-  const ta = g('de-cards-input');
-  if(ta&&confirm('Очистить поле?')) { ta.value=''; updateDeckCount(); }
-}
-
-async function saveDeck() {
-  const key = g('de-deck-select')?.value || 'deck1';
-  const ta = g('de-cards-input');
-  if(!ta) return;
-  const cards = ta.value.split('\n')
-    .map(l=>l.trim())
-    .filter(Boolean)
-    .map(text=>({text}));
-  if(!cards.length) { toast('Добавьте хотя бы одну карточку'); return; }
-  allGameDecksData[key] = cards;
-  GAME_DECKS[key] = cards;
-  try {
-    await db.collection('gameDecks').doc('decks').set(allGameDecksData, {merge:true});
-    toast('Колода «' + (DECK_NAMES[key]||key) + '» сохранена ✦');
-    renderDeckStats();
-  } catch(e){ toast('Ошибка: '+e.message); }
-}
-
-function renderDeckStats() {
-  const el = g('de-stats'); if(!el) return;
-  el.innerHTML = Object.keys(DECK_NAMES).map(key=>{
-    const count = (allGameDecksData[key]||[]).length;
-    const color = count>0 ? 'var(--accent)' : 'var(--text2)';
-    return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <span>${DECK_NAMES[key]}</span>
-      <span style="font-weight:600;color:${color}">${count} карт</span>
-    </div>`;
-  }).join('');
-}
-
-async function loadGameDecks() {
-  try {
-    const snap = await db.collection('gameDecks').doc('decks').get();
-    if(snap.exists) {
-      const data = snap.data();
-      // Load all keys from Firestore including poslaniya and any custom decks
-      Object.keys(data).forEach(key => {
-        if(data[key] && Array.isArray(data[key])) {
-          GAME_DECKS[key] = data[key];
-        }
-      });
-      // Also update standard keys
-      Object.keys(GAME_DECKS).forEach(key => {
-        if(data[key]) GAME_DECKS[key] = data[key];
-      });
-      const total = Object.values(GAME_DECKS).reduce((s,d)=>s+d.length,0);
-      console.log('Game decks loaded:', Object.fromEntries(Object.entries(GAME_DECKS).map(([k,v])=>[k,v.length])));
-    }
-  } catch(e){ console.error('Game decks load error:', e); }
-}
-
-async function openGameScreen() {
-  // Show game screen immediately
-  const prev = document.querySelector('.screen.active');
-  if(prev) screenHistory.push(prev.id);
-  showS('s-game');
-  g('game-start').style.display = 'flex';
-  g('game-step').style.display = 'none';
-  g('game-final').style.display = 'none';
-
-  // Load board image
-  if(GAME_BOARD_IMG) {
-    const img = g('game-board-img');
-    if(img) { img.src=GAME_BOARD_IMG; img.style.display='block'; const ph=g('game-board-placeholder');if(ph)ph.style.display='none'; }
-  }
-
-  // Load decks and show loading state
-  const startBtn = document.querySelector('#game-start button[onclick*="startGame"]');
-  if(startBtn) { startBtn.textContent='⏳ Загружаем колоды...'; startBtn.disabled=true; }
-  await loadGameDecks();
-  if(startBtn) { startBtn.textContent='▶ Начать игру'; startBtn.disabled=false; }
-}
-
-async function startGame() {
-  gameState.active = true;
-  gameState.step = 0;
-  gameState.energy = 0;
-  gameState.steps = [];
-  gameState.cardFlipped = false;
-  gameState.gameId = null;
-
-  // Create game session in Firestore for real-time sync
-  try {
-    const clientId = gameState.clientId || (CU?.role==='client' ? null : CID);
-    const cl = (clients && clients.length) ? clients.find(c=>c.id===clientId) : null;
-    const clientUid = gameState.clientUid || cl?.clientUid || (CU?.role==='client' ? CU.uid : null);
-    const specialistId = CU?.role==='specialist' ? CU.uid : (CU?.specialistUid || null);
-
-    // Check if there's already an active session for this client - reuse it
-    const existing = await db.collection('gameSessions')
-      .where('clientUid','==',clientUid||CU?.uid)
-      .where('status','==','active')
-      .limit(1).get();
-
-    let gameRef;
-    if(!existing.empty) {
-      // Reuse existing session - reset it
-      gameRef = existing.docs[0].ref;
-      await gameRef.update({
-        energy: 0, step: 0, steps: [],
-        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        startedBy: CU?.uid, currentSector: null, currentCard: null
-      });
-    } else {
-      gameRef = await db.collection('gameSessions').add({
-        clientId: clientId||null,
-        clientUid: clientUid||CU?.uid,
-        specialistId,
-        status: 'active',
-        energy: 0, step: 0, steps: [],
-        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        startedBy: CU?.uid
-      });
-    }
-    gameState.gameId = gameRef.id;
-    startGameListener(gameRef.id);
-  } catch(e){ console.error('Game sync error:', e); }
-
-  showGameStep();
-}
-
-let gameUnsubscribe = null;
-function startGameListener(gameId) {
-  if(gameUnsubscribe) gameUnsubscribe();
-  gameUnsubscribe = db.collection('gameSessions').doc(gameId)
-    .onSnapshot(snap => {
-      if(!snap.exists) return;
-      const data = snap.data();
-      updateGameEnergyDisplay(data.energy || 0, data.step || 0);
-    });
-}
-
-// Clean up abandoned/stale game sessions older than 24h
-async function cleanupStaleSessions() {
-  try {
-    const cutoff = new Date(Date.now() - 24*60*60*1000);
-    const snap = await db.collection('gameSessions')
-      .where('specialistId','==',CU.uid)
-      .where('status','==','active')
-      .get();
-    const batch = db.batch();
-    let count = 0;
-    snap.docs.forEach(d=>{
-      const data = d.data();
-      const ts = data.startedAt?.toDate?.() || new Date(0);
-      if(ts < cutoff) { batch.update(d.ref,{status:'abandoned'}); count++; }
-    });
-    if(count > 0) await batch.commit();
-  } catch(e){}
-}
-
-// Specialist listener for any active client games
-let specGameUnsubscribe = null;
-function startSpecialistGameListener() {
-  if(specGameUnsubscribe) { specGameUnsubscribe(); specGameUnsubscribe = null; }
-  if(!CU || CU.role !== 'specialist') return;
-  specGameUnsubscribe = db.collection('gameSessions')
-    .where('specialistId','==',CU.uid)
-    .where('status','==','active')
-    .onSnapshot(snap => {
-      const active = snap.docs.map(d=>({id:d.id,...d.data()}));
-      showActiveGamesOnDash(active);
-    });
-}
-
-function showActiveGamesOnDash(activeGames) {
-  const el = g('dash-active-games');
-  if(!el) return;
-  if(!activeGames.length) { el.style.display='none'; return; }
-
-  // Deduplicate - show only latest game per client
-  const byClient = {};
-  activeGames.forEach(g2 => {
-    const uid = g2.clientUid || 'unknown';
-    if(!byClient[uid] || (g2.startedAt?.seconds||0) > (byClient[uid].startedAt?.seconds||0)) {
-      byClient[uid] = g2;
-    }
-  });
-  const unique = Object.values(byClient);
-
-  el.style.display='block';
-  el.innerHTML = unique.map(g2=>{
-    const cl = clients.find(c=>c.clientUid===g2.clientUid);
-    const name = cl?.fullName || 'Клиент';
-    const pct = Math.min(100, Math.round((g2.energy||0)/18*100));
-    return `<div style="background:linear-gradient(135deg,#7b5ea7,#9d4edd);border-radius:12px;padding:16px;margin-bottom:10px;color:#fff">
-      <div style="font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">🎮 Игра в процессе</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div>
-          <div style="font-size:15px;font-weight:600">${name}</div>
-          <div style="font-size:12px;opacity:.7">Шаг ${g2.step||0}/8 · Энергия ${g2.energy||0}/18</div>
-        </div>
-        <button onclick="window.joinGameAsSpec('${g2.id}')" style="padding:8px 16px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Войти →</button>
-      </div>
-      <div style="background:rgba(255,255,255,.2);border-radius:20px;height:6px;overflow:hidden">
-        <div style="height:100%;background:rgba(255,255,255,.8);border-radius:20px;width:${pct}%;transition:width .5s"></div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function updateGameEnergyDisplay(energy, step) {
-  // Update both displays
-  const displays = [g('gs-energy'), g('game-energy-display'), g('gf-energy')];
-  displays.forEach(el => { if(el) el.textContent = energy; });
-  const ebar = g('gs-ebar');
-  if(ebar) ebar.style.width = Math.min(100, (energy/18)*100) + '%';
-}
-
-async function syncGameState() {
-  if(!gameState.gameId) return;
-  const card = gameState.currentCard;
-  try {
-    await db.collection('gameSessions').doc(gameState.gameId).update({
-      energy: gameState.energy,
-      step: gameState.step,
-      currentSector: gameState.currentSector ? {
-        num: gameState.currentSector.num,
-        name: gameState.currentSector.name,
-        color: gameState.currentSector.color,
-        energy: gameState.currentSector.energy
-      } : null,
-      currentCard: card ? {
-        text: card.card?.text || card.card?.d || '',
-        img: card.card?.img || '',
-        energy: card.card?.energy || 0,
-        deckKey: card.deckKey
-      } : null,
-      cardFlipped: gameState.cardFlipped,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch(e){}
-}
-
-function showGameStep() {
-  g('game-start').style.display = 'none';
-  g('game-final').style.display = 'none';
-  g('game-step').style.display = 'block';
-
-  // Pick random sector (avoid repeating last)
-  const available = SECTORS.slice(0, 8);
-  const lastSector = gameState.steps.length > 0 ? gameState.steps[gameState.steps.length-1].sector.num : -1;
-  const pool = available.filter(s => s.num !== lastSector);
-  const sector = pool[Math.floor(Math.random() * pool.length)];
-  gameState.currentSector = sector;
-
-  // Pick random card from sector deck
-  const deckData = GAME_DECKS[sector.deck] || [];
-  const card = deckData.length > 0
-    ? deckData[Math.floor(Math.random() * deckData.length)]
-    : {text:'Колода ещё не заполнена. Добавьте карточки в редакторе колод.', energy:0};
-  gameState.currentCard = {card, deckKey: sector.deck, idx:0};
-  gameState.currentMakCard = null;
-  gameState.pendingMakDeck = null;
-  gameState.cardFlipped = false;
-
-  // Update progress bar
-  const step = gameState.step + 1;
-  g('gs-step').textContent = step;
-  g('gs-energy').textContent = gameState.energy;
-  g('gs-ebar').style.width = Math.min(100, (gameState.energy/18)*100) + '%';
-
-  // Update sector header
-  g('gs-sector-num').textContent = sector.num;
-  g('gs-sector-name').textContent = sector.name;
-  g('gs-sector-desc').textContent = sector.desc;
-  g('gs-sector-header').style.background = sector.color;
-
-  // Hide energy until card flipped
-  const energyEl = g('gs-card-energy');
-  if(energyEl) { energyEl.textContent = '—'; energyEl.parentElement.querySelector('span:last-of-type') && (energyEl.parentElement.querySelector('span:last-of-type').style.display='inline'); }
-
-  // Hide question until card flipped
-  const qEl = g('gs-sector-question');
-  if(qEl) { qEl.style.display = 'none'; }
-
-  g('gs-note').value = '';
-  g('gs-next-btn').textContent = step >= 8 ? 'К финалу ✦' : 'Следующий шаг →';
-
-  // SHOW SECTOR COVER (обложка) - not the card yet
-  const cardArea = g('gs-card-area');
-  if(cardArea) {
-    cardArea.style.background = sector.color;
-    cardArea.onclick = window.flipGameCard;
-    cardArea.style.cursor = 'pointer';
-    cardArea.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:30px;text-align:center;color:#fff">
-        <div style="font-size:13px;opacity:.6;text-transform:uppercase;letter-spacing:3px;margin-bottom:16px">Сектор ${sector.num}</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;margin-bottom:16px">${sector.name}</div>
-        <div style="font-size:13px;opacity:.75;line-height:1.6;margin-bottom:24px">${sector.desc}</div>
-        <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:12px 20px;font-size:13px;opacity:.8">
-          Нажмите чтобы вытянуть карту
-        </div>
-      </div>`;
-  }
-  const lbl = g('gs-card-deck-label'); if(lbl) lbl.style.display='none';
-  const nm = g('gs-card-name'); if(nm) nm.style.display='none';
-  const makBtn = g('gs-mak-btn'); if(makBtn) makBtn.style.display='none';
-  syncGameState();
-}
-
-function flipGameCard() {
-  if(gameState.cardFlipped) return;
-  gameState.cardFlipped = true;
-  const {card, deckKey} = gameState.currentCard;
-  const cardText = card?.text || card?.d || '';
-  const cardEnergy = card?.energy || 0;
-  const sector = gameState.currentSector;
-
-  // Show card content
-  const cardArea = g('gs-card-area');
-  if(cardArea) {
-    cardArea.style.cursor = 'default';
-    cardArea.onclick = null;
-    cardArea.style.background = '#f7f3ee';
-    const deckColor = sector ? sector.color.match(/#[0-9a-f]{6}/i)?.[0] || '#8b5e3c' : '#8b5e3c';
-    cardArea.innerHTML = `
-      <div style="padding:28px;text-align:center;width:100%">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:21px;line-height:1.7;color:#2c2416">${cardText}</div>
-      </div>`;
-  }
-
-  // Show energy from card automatically
-  const energyEl = g('gs-card-energy');
-  if(energyEl) {
-    if(cardEnergy > 0) {
-      energyEl.textContent = '+' + cardEnergy;
-      const hint = energyEl.parentElement.querySelector('span:last-of-type');
-      if(hint) hint.style.display='none';
-    } else {
-      energyEl.textContent = '0';
-    }
-  }
-
-  // Show question
-  const qEl = g('gs-sector-question');
-  if(qEl && sector?.q) {
-    qEl.textContent = sector.q;
-    qEl.style.display = 'block';
-  }
-
-  // Show deck label
-  const lbl = g('gs-card-deck-label');
-  if(lbl) {
-    const deckNames = {deck1:'База',deck2:'Семья',deck3:'Самореализация',deck4:'Изобилие',deck5:'Духовность',deck6:'Социум',deck7:'Знания',deck8:'Удовольствия',deck9:'Миссия',deck10:'Поток'};
-    lbl.style.display='block';
-    lbl.style.background='rgba(44,36,22,.15)';
-    lbl.style.color='#5c3d1e';
-    lbl.style.padding='4px 10px';
-    lbl.style.borderRadius='6px';
-    lbl.style.fontSize='11px';
-    lbl.style.fontWeight='700';
-    lbl.textContent=(deckNames[deckKey]||deckKey).toUpperCase();
-  }
-
-  // Check MAK trigger automatically
-  checkMakTrigger(cardText);
-
-  // If MAK trigger found - auto show the button prominently
-  if(gameState.pendingMakDeck) {
-    const makBtn = g('gs-mak-btn');
-    if(makBtn) makBtn.style.marginTop = '16px';
-  }
-
-  syncGameState();
-}
-
-function showGameCardContent(cardData, isMak) {
-  const {card, deckKey} = cardData;
-  const deckColors = {deck1:'#7cb87c',deck2:'#e84393',deck3:'#f4a261',deck4:'#d4a853',deck5:'#7b5ea7',deck6:'#2980b9',deck7:'#b8b020',deck8:'#5b9bd5',deck9:'#8b5e3c',deck10:'#52b788',momenty:'#7b5ea7',resurs:'#52b788',strahi:'#e63946'};
-  const deckDisplayNames = {...DECK_NAMES, momenty:'МОМЕНТЫ', resurs:'РЕСУРС', strahi:'СТРАХИ'};
-  const color = deckColors[deckKey] || '#8b5e3c';
-  const cardText = card?.text || card?.d || card?.t || '';
-  const imgUrl = card?.img || '';
-
-  g('gs-card-placeholder').style.display = 'none';
-
-  // Show card content
-  const cardArea = g('gs-card-area');
-  if(isMak) {
-    // MAK card - show as image card
-    cardArea.style.background = '#f0ebe4';
-    if(imgUrl) {
-      g('gs-card-img').src = imgUrl;
-      g('gs-card-img').style.display = 'block';
-    } else {
-      cardArea.innerHTML = `<div style="padding:20px;text-align:center;color:${color}"><div style="font-size:40px;margin-bottom:8px">🃏</div><div style="font-size:13px;opacity:.6">МАК-карта</div></div>`;
-    }
-  } else {
-    // Text/image game card
-    cardArea.style.cursor = 'default';
-    cardArea.onclick = null;
-    const cardImgUrl = card?.img || card?.imgUrl || '';
-    if(cardImgUrl) {
-      // Has image - show it
-      cardArea.style.background = '#f0ebe4';
-      cardArea.innerHTML = `<img src="${cardImgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px"/>`;
-    } else {
-      // Text card
-      cardArea.style.background = '#f7f3ee';
-      cardArea.style.display = 'flex';
-      cardArea.style.alignItems = 'center';
-      cardArea.style.justifyContent = 'center';
-      const deckColor = (()=>{const colors={deck1:'#7cb87c',deck2:'#e84393',deck3:'#f4a261',deck4:'#d4a853',deck5:'#7b5ea7',deck6:'#2980b9',deck7:'#b8b020',deck8:'#5b9bd5',deck9:'#8b5e3c',deck10:'#52b788'};return colors[deckKey]||'#8b5e3c';})();
-      cardArea.innerHTML = `<div style="padding:24px;text-align:center;width:100%">
-        <div style="width:40px;height:3px;background:${deckColor};border-radius:2px;margin:0 auto 16px;opacity:.4"></div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;line-height:1.7;color:#2c2416">${cardText}</div>
-        <div style="width:40px;height:3px;background:${deckColor};border-radius:2px;margin:16px auto 0;opacity:.4"></div>
-      </div>`;
-    }
-  }
-
-  // Deck label
-  const lbl = g('gs-card-deck-label');
-  if(lbl) {
-    lbl.style.display = 'block';
-    lbl.style.background = color;
-    lbl.style.color = '#fff';
-    lbl.style.padding = '4px 10px';
-    lbl.style.borderRadius = '6px';
-    lbl.style.fontSize = '11px';
-    lbl.style.fontWeight = '700';
-    lbl.textContent = (isMak ? '✦ МАК · ' : '') + (deckDisplayNames[deckKey] || deckKey).toUpperCase();
-  }
-
-  // Card name/text
-  const nameEl = g('gs-card-name');
-  if(nameEl && !isMak) { nameEl.textContent = cardText; nameEl.style.display = 'none'; }
-
-  // Show card energy
-  const energyEl = g('gs-card-energy');
-  if(energyEl && !isMak) {
-    const cardEnergy = card?.energy || 0;
-    energyEl.textContent = cardEnergy > 0 ? '+' + cardEnergy : sector_energy_fallback();
-    energyEl.parentElement.querySelector('span:last-of-type').style.display = 'none';
-  }
-
-  // Check for MAK trigger in card text
-  if(!isMak) {
-    checkMakTrigger(cardText);
-  }
-}
-
-function sector_energy_fallback() {
-  const s = gameState.currentSector;
-  return s ? '+' + s.energy : '—';
-}
-
-function checkMakTrigger(cardText) {
-  if(!cardText) return;
-  const lower = cardText.toLowerCase();
-  let triggered = null;
-  for(const t of MAK_TRIGGERS) {
-    if(lower.includes(t.phrase)) {
-      triggered = t;
-      break;
-    }
-  }
-  const makBtn = g('gs-mak-btn');
-  if(triggered) {
-    gameState.pendingMakDeck = triggered.deck;
-    gameState.pendingMakLabel = triggered.label;
-    if(makBtn) {
-      makBtn.style.display = 'block';
-      makBtn.textContent = '🃏 ' + triggered.label + ' — вытянуть карту';
-      const colors = {momenty:'#7b5ea7', resurs:'#52b788', strahi:'#e63946', poslaniya:'#c49a6c'};
-      makBtn.style.background = colors[triggered.deck] || '#8b5e3c';
-    }
-  } else {
-    gameState.pendingMakDeck = null;
-    if(makBtn) makBtn.style.display = 'none';
-  }
-}
-
-function drawMakCard() {
-  if(!gameState.pendingMakDeck) return;
-  const deckKey = gameState.pendingMakDeck;
-
-  if(deckKey === 'poslaniya') {
-    // Poslaniya deck - use POSLANIYA_IMGS
-    if(!POSLANIYA_IMGS.length) {
-      toast('Колода «Послания» ещё не загружена — добавьте изображения на Cloudinary');
-      return;
-    }
-    const idx = Math.floor(Math.random() * POSLANIYA_IMGS.length);
-    showMakOverlay({card:{d:'Послание'}, deckKey:'poslaniya', idx, imgUrl: POSLANIYA_IMGS[idx]});
-    return;
-  }
-
-  const deck = DECKS[deckKey] || [];
-  if(!deck.length) { toast('МАК-колода пуста'); return; }
-  const card = deck[Math.floor(Math.random() * deck.length)];
-  const idx = deck.indexOf(card) % 50;
-  showMakOverlay({card, deckKey, idx});
-}
-
-function showMakOverlay(makCard) {
-  const {card, deckKey, idx, imgUrl: customImg} = makCard;
-  const imgUrl = customImg || (CARD_IMGS[deckKey] ? CARD_IMGS[deckKey][idx] : '');
-  const colors = {momenty:'#7b5ea7', resurs:'#52b788', strahi:'#e63946', poslaniya:'#c49a6c'};
-  const names = {momenty:'МОМЕНТЫ', resurs:'РЕСУРС', strahi:'СТРАХИ', poslaniya:'ПОСЛАНИЯ'};
-  const color = colors[deckKey] || '#888';
-  const existing = g('mak-overlay');
-  if(existing) existing.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'mak-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px';
-  overlay.innerHTML = `<div style="background:#fff;border-radius:20px;overflow:hidden;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
-    <div style="background:${color};padding:16px;color:#fff;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:13px;font-weight:700;letter-spacing:1px">✦ МАК · ${names[deckKey]||deckKey}</div>
-      <button onclick="document.getElementById('mak-overlay').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px">×</button>
-    </div>
-    ${imgUrl?`<div style="width:100%;aspect-ratio:4/3;overflow:hidden"><img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover"/></div>`:`<div style="padding:40px;text-align:center;color:${color};font-size:48px">🃏</div>`}
-    <div style="padding:16px">
-      <div style="font-size:14px;color:#666;line-height:1.6;text-align:center;font-style:italic">${card?.d||''}</div>
-      <button onclick="document.getElementById('mak-overlay').remove()" style="width:100%;margin-top:16px;padding:12px;border-radius:10px;border:none;background:${color};color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Принято ✓</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-}
-
-function editSectorEnergy() {
-  const current = gameState.currentSector?.energy || 0;
-  const newVal = prompt('Изменить энергию сектора (текущее: ' + current + '):', current);
-  if(newVal !== null && !isNaN(parseInt(newVal))) {
-    if(gameState.currentSector) gameState.currentSector.energy = parseInt(newVal);
-    toast('Энергия сектора обновлена');
-  }
-}
-
-function editCardEnergy() {
-  const current = gameState.currentCard?.card?.energy || gameState.currentSector?.energy || 0;
-  const newVal = prompt('Скорректировать энергию карты (текущее: ' + current + '):', current);
-  if(newVal !== null && !isNaN(parseInt(newVal))) {
-    if(gameState.currentCard?.card) gameState.currentCard.card.energy = parseInt(newVal);
-    else if(gameState.currentSector) gameState.currentSector.energy = parseInt(newVal);
-    const el = g('gs-card-energy');
-    if(el) el.textContent = '+' + parseInt(newVal);
-    toast('Энергия скорректирована ✦');
-  }
-}
-
-function gameNext() {
-  const note = g('gs-note').value;
-  const sector = gameState.currentSector;
-  const card = gameState.currentCard?.card;
-  // Energy comes from card (if set) or sector
-  const cardEnergy = card?.energy || 0;
-  const energyGained = cardEnergy > 0 ? cardEnergy : sector.energy;
-  const energyBefore = gameState.energy;
-
-  gameState.steps.push({
-    step: gameState.step + 1,
-    sector: {num:sector.num, name:sector.name},
-    cardText: card?.text || card?.d || '',
-    cardImg: card?.img || '',
-    energyGained,
-    energyBefore,
-    energyAfter: energyBefore + energyGained,
-    note
-  });
-
-  gameState.energy += energyGained;
-  gameState.step++;
-
-  // Sync to Firestore
-  syncGameState();
-
-  // Check end condition
-  if(gameState.energy >= 18 || gameState.step >= 8) {
-    showGameFinal();
-  } else {
-    showGameStep();
-  }
-}
-
-function showGameFinal() {
-  g('game-step').style.display = 'none';
-  g('game-final').style.display = 'block';
-  g('gf-energy').textContent = gameState.energy;
-
-  // Pick 3 random cards from different decks for final
-  // 3 cards from deck9 (final deck) for sector 9 - Миссия
-  const finalDeck = GAME_DECKS['deck9'] || DECKS.momenty;
-  const shuffled = [...finalDeck].sort(()=>Math.random()-.5);
-  const finalCards = shuffled.slice(0,3).map((card,i) => ({card, deckKey:'deck9', idx:i}));
-
-  const deckColors = {deck1:'#7cb87c',deck2:'#e84393',deck3:'#f4a261',deck4:'#d4a853',deck5:'#7b5ea7',deck6:'#2980b9',deck7:'#b8b020',deck8:'#5b9bd5',deck9:'#8b5e3c',deck10:'#52b788'};
-
-  g('gf-cards').innerHTML = finalCards.map((fc,i) => {
-    const imgUrl = ''; // TODO: add when game card images uploaded
-    return `<div style="background:var(--surface);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:var(--sh);border-left:3px solid ${deckColors[fc.deck]}">
-      <div style="display:flex;gap:12px;padding:14px;align-items:center">
-        <div style="width:80px;height:80px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#f0ebe4">
-          ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover"/>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${deckColors[fc.deck]};font-size:24px">✦</div>`}
-        </div>
-        <div>
-          <div style="font-size:10px;color:${deckColors[fc.deck]};font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${deckTitles[fc.deck]}</div>
-          <div style="font-size:14px;line-height:1.5">${fc.card?.d||'Карта '+(i+1)}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function saveGame() {
-  const finalNote = g('gf-note')?.value || '';
-  const summary = 'Игра трансформации · ' + gameState.energy + ' энергий · ' + gameState.steps.length + ' шагов';
-  const notes = gameState.steps.map((s,i) => 'Шаг '+s.step+': '+(s.sector?.name||'')+' (+'+s.sector?.energy+' энергий)'+(s.note?'\n'+s.note:'')).join('\n\n');
-
-  const clientId = gameState.clientId || CID;
-  const cl = clients.find(c=>c.id===clientId);
-
-  try {
-    await db.collection('sessions').add({
-      clientId: clientId||null,
-      clientUid: gameState.clientUid || cl?.clientUid || null,
-      specialistId: CU.uid,
-      date: firebase.firestore.FieldValue.serverTimestamp(),
-      type: 'game',
-      request: 'Игра трансформации',
-      notes: notes,
-      insights: finalNote,
-      summary: summary,
-      payment: 0,
-      gameData: {
-        totalEnergy: gameState.energy,
-        steps: gameState.steps.map(s=>({
-          step: s.step,
-          sectorName: s.sector.name,
-          sectorNum: s.sector.num,
-          deck: s.card.deck,
-          cardDesc: s.card.card?.d||'',
-          energyGained: s.sector.energy,
-          note: s.note
-        })),
-        finalCards: []
-      }
-    });
-    // Mark game session as finished
-    if(gameState.gameId) {
-      await db.collection('gameSessions').doc(gameState.gameId).update({status:'finished'});
-    }
-    // Also clean up any other stale active sessions for this client
-    try {
-      const uid = gameState.clientUid || (CU?.role==='client'?CU.uid:null);
-      if(uid) {
-        const stale = await db.collection('gameSessions')
-          .where('clientUid','==',uid).where('status','==','active').get();
-        const batch = db.batch();
-        stale.docs.forEach(d=>{ if(d.id!==gameState.gameId) batch.update(d.ref,{status:'abandoned'}); });
-        await batch.commit();
-      }
-    } catch(e){}
-    toast('Игра сохранена ✦');
-    setTimeout(()=>exitGame(), 1000);
-  } catch(e){ toast('Ошибка: '+e.message); }
-}
-
-function exitGame() {
-  if(gameState.active && gameState.steps.length > 0) {
-    if(!confirm('Выйти из игры? Несохранённый прогресс будет потерян.')) return;
-  }
-  gameState.active = false;
-  // Mark as abandoned
-  if(gameState.gameId) {
-    db.collection('gameSessions').doc(gameState.gameId).update({status:'abandoned'}).catch(()=>{});
-    gameState.gameId = null;
-  }
-  // Reset to start screen
-  g('game-start').style.display = 'flex';
-  g('game-step').style.display = 'none';
-  g('game-final').style.display = 'none';
-  g('game-energy-display').textContent = '0';
-  g('game-step-info').textContent = '';
-  showS(CU?.role==='client' ? 's-cv' : 's-profile');
-}
 
 async function saveMyData() {
   if(!CU?.clientDocId){toast('Нет привязанного профиля');return;}
@@ -3634,7 +2564,8 @@ window.saveNC=saveNC; window.saveNS=saveNS; window.saveResult=saveResult;
 window.calcMx=calcMx; window.saveML=saveML; window.openML=openML;
 window.filterC=filterC; window.flipCard=flipCard; window.dNext=dNext; window.dPrev=dPrev;
 window.exitDiag=exitDiag; window.startDiag=startDiag; window.startClientDiag=startClientDiag;
-window.updSt=updSt; window.startDiagSteps=startDiagSteps; window.showChakraInfo=showChakraInfo; window.editSession=editSession; window.updateSession=updateSession; window.deleteSession=deleteSession; window.saveClientNote=saveClientNote; window.saveClientData=saveClientData; window.saveMyData=saveMyData; window.startGame=startGame; window.openGameScreen=openGameScreen; window.openDeckEditor=openDeckEditor; window.loadDeckForEdit=loadDeckForEdit; window.updateDeckCount=updateDeckCount; window.clearDeckEditor=clearDeckEditor; window.saveDeck=saveDeck; window.drawMakCard=drawMakCard; window.editCardEnergy=editCardEnergy; window.joinGameAsSpec=joinGameAsSpec; window.checkActiveGame=checkActiveGame; window.aiRecognizeCards=aiRecognizeCards; window.startGameFromProfile=startGameFromProfile; window.startGameFromProfile=startGameFromProfile; window.flipGameCard=flipGameCard; window.gameNext=gameNext; window.editSectorEnergy=editSectorEnergy; window.saveGame=saveGame; window.exitGame=exitGame; window.showCalendar=showCalendar; window.openPublicBooking=openPublicBooking; window.pubSelectSlot=pubSelectSlot; window.pubCalPrev=pubCalPrev; window.pubCalNext=pubCalNext; window.sendPublicBooking=sendPublicBooking; window.calPrevWeek=calPrevWeek; window.calNextWeek=calNextWeek; window.toggleSlot=toggleSlot; window.openBookingWithSlots=openBookingWithSlots; window.selectSlot=selectSlot; window.sendBooking=sendBooking; window.sendBooking=sendBooking; window.confirmBooking=confirmBooking; window.rejectBooking=rejectBooking; window.rejectBookingDirect=rejectBookingDirect; window.editBookingFromCal=editBookingFromCal; window.openConfirmBooking=openConfirmBooking; window.swTab=swTab; window.openNewSess=openNewSess;
+window.updSt=updSt; window.startDiagSteps=startDiagSteps; window.showChakraInfo=showChakraInfo; window.editSession=editSession; window.updateSession=updateSession; window.deleteSession=deleteSession; window.saveClientNote=saveClientNote; window.saveClientData=saveClientData; window.saveMyData=saveMyData; window.showCalendar=showCalendar; window.openPublicBooking=openPublicBooking; window.pubSelectSlot=pubSelectSlot; window.pubCalPrev=pubCalPrev; window.pubCalNext=pubCalNext; window.sendPublicBooking=sendPublicBooking; window.calPrevWeek=calPrevWeek; window.calNextWeek=calNextWeek; window.toggleSlot=toggleSlot; window.openBookingWithSlots=openBookingWithSlots; window.selectSlot=selectSlot; window.sendBooking=sendBooking; window.sendBooking=sendBooking; window.confirmBooking=confirmBooking; window.rejectBooking=rejectBooking; window.rejectBookingDirect=rejectBookingDirect; window.editBookingFromCal=editBookingFromCal; window.openConfirmBooking=openConfirmBooking; window.swTab=swTab; window.openNewSess=openNewSess;
+window.applySessionFilters=applySessionFilters; window.resetSessionFilters=resetSessionFilters;
 window.resetPassword=resetPassword;
 
 // ===== INIT =====
