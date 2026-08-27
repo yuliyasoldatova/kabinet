@@ -194,6 +194,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 </style>
 </head>
 <body>
+<!-- BUILD: SESSION-WORKSPACE-2026-08-26 -->
 <!-- BUILD: CLIENT-ROLE-AUTH-FIX-2026-08-26 -->
 
 <!-- LOGIN -->
@@ -573,17 +574,16 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     </div>
     <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select>
       <button type="button" onclick="window.quickAddMeetingType()" style="margin-top:7px;border:none;background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0">＋ Добавить свой тип встречи</button></div>
-    <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="nsr" placeholder="Что беспокоит..."></textarea></div>
-    <div class="ff"><label class="fl2">Заметки</label><textarea class="fta" id="nsn" placeholder="Наблюдения..."></textarea></div>
-    <div class="ff"><label class="fl2">Инсайты</label><textarea class="fta" id="nsi" placeholder="Ключевые инсайты..."></textarea></div>
-    <div class="ff"><label class="fl2">Рекомендации</label><textarea class="fta" id="nsa" placeholder="Что делать между встречами..."></textarea></div>
-    <div style="display:flex;gap:12px;margin-bottom:16px">
-      <div style="flex:1"><label class="fl2">До (1-10)</label><input class="finp" id="nsb" type="number" min="1" max="10"></div>
-      <div style="flex:1"><label class="fl2">После (1-10)</label><input class="finp" id="nsa2" type="number" min="1" max="10"></div>
-    </div>
-    <div class="ff"><label class="fl2">Итоги встречи (видит клиент)</label><textarea class="fta" id="nssum" placeholder="Краткое резюме сессии для клиента..."></textarea></div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.5;margin:-2px 0 16px">Создайте рабочую страницу встречи. Дальше все записи можно вести прямо в карточке сессии — они сохраняются автоматически.</div>
+    <div class="ff"><label class="fl2">Запрос</label><textarea class="fta" id="nsr" placeholder="Сформулированный запрос клиента"></textarea></div>
+    <div class="ff"><label class="fl2">Желаемый результат</label><textarea class="fta" id="nsgoal" placeholder="Какой результат встречи будет полезен клиенту"></textarea></div>
+    <div class="ff"><label class="fl2">Мои инсайты</label><textarea class="fta" id="nsi" placeholder="Ключевые мысли и осознания"></textarea></div>
+    <div class="ff"><label class="fl2">С чем я ухожу</label><textarea class="fta" id="nstake" placeholder="Главный итог встречи"></textarea></div>
+    <div class="ff"><label class="fl2">Мои следующие действия</label><textarea class="fta" id="nsactions" placeholder="Что клиент выбирает сделать дальше"></textarea></div>
+    <div class="ff"><label class="fl2">Комментарий специалиста <span style="text-transform:none;letter-spacing:0;color:var(--text2)">(видит клиент)</span></label><textarea class="fta" id="nscomment" placeholder="Необязательный комментарий клиенту"></textarea></div>
+    <div class="ff" style="background:#fff8e8;border:1px solid #ead7ad;border-radius:12px;padding:14px"><label class="fl2" style="color:#7a5c2e">🔒 Только для специалиста</label><textarea class="fta" id="nsprivate" style="background:#fff;border-color:#ead7ad" placeholder="Ваши приватные записи. Клиент это поле не увидит."></textarea></div>
     <div class="ff"><label class="fl2">Сумма оплаты (₸)</label><input class="finp" id="nspay" type="number" placeholder="0" min="0"></div>
-    <button class="bf" style="width:100%" id="btn-save-ns" onclick="window.saveNS()">Сохранить</button>
+    <button class="bf" style="width:100%" id="btn-save-ns" onclick="window.saveNS()">Создать сессию</button>
     <button class="bo" style="width:100%;margin-top:10px" id="btn-close-ns" onclick="window.closeM('m-ns')">Отмена</button>
   </div>
 </div>
@@ -1290,6 +1290,7 @@ function startSpecialistListeners() {
 
 function startClientListeners(uid) {
   stopListeners();
+  loadClientBookings(uid);
   unsubSessions=db.collection('sessions').where('clientUid','==',uid)
     .onSnapshot(snap=>{
       sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1308,7 +1309,7 @@ function showS(id) {
   const el=g(id); if(el) el.classList.add('active');
   const noNav=['s-login','s-diag','s-result','s-cv','s-chakra','s-calendar','s-public-book'];
   const bnav=g('bnav');
-  if(bnav) bnav.style.display=(noNav.includes(id)||!CU)?'none':'flex';
+  if(bnav) bnav.style.display=(noNav.includes(id)||!CU||CU.role==='client')?'none':'flex';
   window.scrollTo(0,0);
 }
 function navTo(p,btn) {
@@ -1539,71 +1540,74 @@ function dateStr(d,time) {
 
 function scHTML(s) {
   const tm={diagnostic:'t-d',consultation:'t-c'};
-  const b=parseInt(s.stateBefore)||0,a=parseInt(s.stateAfter)||0;
-  const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${s.payment}₸</span>`:'';
+  const pay=s.payment?`<span style="margin-left:8px;color:var(--accent);font-weight:600">${escHTML(s.payment)}₸</span>`:'';
+  const done=!!((s.insights||'').trim() && (s.takeaway||s.summary||'').trim() && (s.nextActions||s.actions||'').trim());
   return `<div class="sc" onclick="window.openSD('${s.id}')">
     <div class="sd2">${dateStr(s.date,s.sessionTime)}</div>
     <span class="st ${tm[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span>
-    <div class="sr">${(s.request||'').slice(0,80)}${pay}</div>
-    ${b||a?`<div class="sbar"><span>До:${b}</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<b?'f':''}"></div>`).join('')}</div><span>→</span><div class="sdots">${Array.from({length:10},(_,i)=>`<div class="sdot ${i<a?'f':''}"></div>`).join('')}</div><span>После:${a}</span></div>`:''}
+    <div class="sr">${escHTML((s.request||'').slice(0,100) || 'Запрос пока не зафиксирован')}${pay}</div>
+    <div style="margin-top:8px;font-size:11px;font-weight:600;color:${done?'#2e7d32':'#a66a00'}">${done?'✓ Итог заполнен':'○ Итог не заполнен'}</div>
   </div>`;
+}
+
+function resetNewSessionForm(){
+  ['nsd','nsr','nsgoal','nsi','nstake','nsactions','nscomment','nsprivate','nspay'].forEach(id=>{const e=g(id);if(e)e.value='';});
+  const tm=g('nstm'); if(tm) tm.value='10:00';
 }
 
 function openNewSess(){
   populateMeetingTypeSelect('nst');
-  closeM('m-ns');
-  setTimeout(()=>{
-    openM('m-ns');
-    // Pre-fill today's date
-    const nsd=g('nsd');
-    if(nsd&&!nsd.value) nsd.value=new Date().toISOString().split('T')[0];
-    // Reset save button to default
-    const btn=g('btn-save-ns');
-    if(btn){btn.textContent='Сохранить';btn.onclick=()=>window.saveNS();}
-  },50);
+  resetNewSessionForm();
+  const nsd=g('nsd');
+  if(nsd) nsd.value=new Date().toISOString().split('T')[0];
+  const btn=g('btn-save-ns');
+  if(btn){btn.textContent='Создать сессию';btn.onclick=()=>window.saveNS();}
+  openM('m-ns');
 }
 
 async function saveNS() {
-  if(!CID) return;
+  if(!CID) { toast('Сначала выберите клиента'); return; }
   const cl=clients.find(c=>c.id===CID);
   const sessDate=g('nsd')?.value||'';
-  const sessTime=g('nstm')?.value||'';
-  // Use selected date or server timestamp
+  const sessTime=g('nstm')?.value||'10:00';
   const dateVal=sessDate
     ? firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime))
     : firebase.firestore.FieldValue.serverTimestamp();
   const sessType=g('nst')?.value||'consultation';
+  const takeaway=g('nstake')?.value||'';
+  const nextActions=g('nsactions')?.value||'';
+  const data={
+    clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
+    date:dateVal, sessionDate:sessDate, sessionTime:sessTime,
+    type:sessType, typeName:meetingTypeLabel(sessType),
+    request:g('nsr')?.value||'',
+    desiredResult:g('nsgoal')?.value||'',
+    insights:g('nsi')?.value||'',
+    takeaway, summary:takeaway,
+    nextActions, actions:nextActions,
+    specialistComment:g('nscomment')?.value||'',
+    privateNote:g('nsprivate')?.value||'',
+    payment:g('nspay')?.value||'',
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
   try {
-    await db.collection('sessions').add({
-      clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
-      date:dateVal,
-      sessionDate:sessDate, sessionTime:sessTime,
-      type:sessType, typeName:meetingTypeLabel(sessType),
-      request:g('nsr')?.value||'', notes:g('nsn')?.value||'',
-      insights:g('nsi')?.value||'', actions:g('nsa')?.value||'',
-      summary:g('nssum')?.value||'',
-      stateBefore:g('nsb')?.value||'', stateAfter:g('nsa2')?.value||'',
-      payment:g('nspay')?.value||''
-    });
+    const ref=await db.collection('sessions').add(data);
     if(cl?.status==='new') await db.collection('clients').doc(CID).update({status:'active'});
-
-    // Auto-add to calendar as booked slot
     if(sessDate&&sessTime&&CU.uid) {
       try {
         const schedRef=db.collection('schedule').doc(CU.uid);
         const schedSnap=await schedRef.get();
         const slots=schedSnap.exists?(schedSnap.data().slots||{}):{};
         if(!slots[sessDate]) slots[sessDate]={};
-        slots[sessDate][sessTime]='booked'; // mark as booked in calendar
+        slots[sessDate][sessTime]='booked';
         await schedRef.set({slots},{merge:true});
-        // Refresh calendar data if open
-        if(document.querySelector('#s-calendar.active')) { calSlots=slots; renderCalendar(); }
       } catch(e){console.error('Calendar update error:',e);}
     }
-
     closeM('m-ns');
-    ['nsd','nsr','nsn','nsi','nsa','nsb','nsa2','nspay','nssum'].forEach(id=>{const e=g(id);if(e)e.value='';});
-    toast('Сессия сохранена и добавлена в график ✦');
+    if(!sessions.some(x=>x.id===ref.id)) sessions.push({id:ref.id,...data});
+    resetNewSessionForm();
+    toast('Рабочая страница сессии создана ✦');
+    openSD(ref.id);
   } catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -1634,6 +1638,10 @@ function fillSessionClientFilter() {
   if(items.some(c=>c.id===current)) sel.value=current;
 }
 
+function sessionReflectionDone(s){
+  return !!((s.insights||'').trim() && (s.takeaway||s.summary||'').trim() && (s.nextActions||s.actions||'').trim());
+}
+
 function rAllSess() {
   const list=g('asl'); if(!list) return;
   fillSessionClientFilter();
@@ -1653,20 +1661,20 @@ function rAllSess() {
   }
   const typeClass={diagnostic:'t-d',consultation:'t-c'};
   list.innerHTML=`<div class="sessions-table-wrap"><table class="sessions-table">
-    <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Запрос</th><th>Состояние</th><th>Оплата</th><th></th></tr></thead>
+    <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Запрос</th><th>Итог</th><th>Оплата</th><th></th></tr></thead>
     <tbody>${sorted.map(s=>{
       const cl=clients.find(c=>c.id===s.clientId);
       const dt=s.date?.toDate?s.date.toDate():new Date(s.date||0);
       const dateText=!Number.isNaN(dt.getTime())?dt.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}):(s.sessionDate||'—');
       const timeText=s.sessionTime||(!Number.isNaN(dt.getTime())?dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'');
-      const before=s.stateBefore||'—', after=s.stateAfter||'—';
       const payment=s.payment!==''&&s.payment!=null&&Number(s.payment)!==0?`${escHTML(s.payment)} ₸`:'—';
+      const done=sessionReflectionDone(s);
       return `<tr onclick="window.openSD('${escHTML(s.id)}')">
         <td><div class="sessions-date-main">${escHTML(dateText)}</div><div class="sessions-date-time">${escHTML(timeText)}</div></td>
         <td><div class="sessions-client-name">${escHTML(cl?.fullName||'Клиент не найден')}</div></td>
         <td><span class="st ${typeClass[s.type]||'t-c'}">${escHTML(meetingTypeLabel(s.type,s.typeName))}</span></td>
         <td><div class="sessions-request">${escHTML(s.request||'—')}</div></td>
-        <td><div class="sessions-state">${escHTML(before)} → ${escHTML(after)}</div></td>
+        <td><span style="font-size:12px;font-weight:700;color:${done?'#2e7d32':'#a66a00'}">${done?'✓ Заполнен':'○ Ждёт итог'}</span></td>
         <td><div class="sessions-payment">${payment}</div></td>
         <td><button class="sessions-open" onclick="event.stopPropagation();window.openSD('${escHTML(s.id)}')">Открыть →</button></td>
       </tr>`;
@@ -1681,81 +1689,100 @@ function resetSessionFilters(){
   rAllSess();
 }
 
+const sessionSaveTimers={};
+function setSessionSaveStatus(text,isError=false){
+  const el=g('session-save-status'); if(!el) return;
+  el.textContent=text;
+  el.style.color=isError?'#e63946':(text.includes('Сохранено')?'#2e7d32':'var(--text2)');
+}
+
+function sessionFieldChanged(el){
+  if(!el||!el.dataset.sessionId||!el.dataset.field) return;
+  const sid=el.dataset.sessionId, field=el.dataset.field;
+  const clientAllowed=['insights','takeaway','nextActions'];
+  const specialistAllowed=['request','desiredResult','insights','takeaway','nextActions','specialistComment','privateNote','payment'];
+  const allowed=CU?.role==='client'?clientAllowed:specialistAllowed;
+  if(!allowed.includes(field)) return;
+  const key=sid+'|'+field;
+  const sess=sessions.find(x=>x.id===sid);
+  if(sess){
+    sess[field]=el.value;
+    if(field==='takeaway') sess.summary=el.value;
+    if(field==='nextActions') sess.actions=el.value;
+  }
+  setSessionSaveStatus('Сохраняем…');
+  clearTimeout(sessionSaveTimers[key]);
+  sessionSaveTimers[key]=setTimeout(async()=>{
+    const data={[field]:el.value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(field==='takeaway') data.summary=el.value;
+    if(field==='nextActions') data.actions=el.value;
+    try {
+      await db.collection('sessions').doc(sid).update(data);
+      setSessionSaveStatus('Сохранено ✓');
+    } catch(e){
+      console.error('Session autosave error',e);
+      setSessionSaveStatus('Не удалось сохранить',true);
+    }
+  },650);
+}
+
+function sessionTextarea(sid,label,field,value,editable=true,privateField=false,placeholder=''){
+  const bg=privateField?'#fff8e8':'var(--surface)';
+  const border=privateField?'#ead7ad':'var(--border)';
+  return `<div style="margin-bottom:16px;background:${bg};border:${privateField?'1px solid '+border:'none'};border-radius:14px;padding:${privateField?'14px':'0'}">
+    <div style="font-size:11px;color:${privateField?'#7a5c2e':'var(--text2)'};text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">${label}</div>
+    <textarea data-session-id="${escHTML(sid)}" data-field="${field}" ${editable?'oninput="window.sessionFieldChanged(this)"':'readonly'} placeholder="${escHTML(placeholder)}" style="width:100%;min-height:92px;padding:13px 15px;border:1px solid ${border};border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;line-height:1.55;background:${editable?'#fff':'#f6f2ed'};color:var(--text);resize:vertical;outline:none">${escHTML(value||'')}</textarea>
+  </div>`;
+}
+
 function openSD(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
-  screenHistory.push(document.querySelector('.screen.active')?.id||'s-sessions');
+  const current=document.querySelector('.screen.active')?.id;
+  if(current!=='s-sessdet') screenHistory.push(current||'s-sessions');
   showS('s-sessdet');
   const cl=clients.find(c=>c.id===s.clientId);
   const isSpec=CU?.role==='specialist';
   const sdc=g('sdc'); if(!sdc) return;
+  const takeaway=s.takeaway||s.summary||'';
+  const nextActions=s.nextActions||s.actions||'';
+  const privateNote=s.privateNote||s.specNotes||(!s.dr?s.notes:'')||'';
+  const done=sessionReflectionDone({...s,takeaway,nextActions});
 
-  const fld=(l,v,color)=>v?`<div style="margin-bottom:16px">
-    <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${l}</div>
-    <div style="font-size:14px;line-height:1.7;color:${color||'var(--text)'};background:var(--surface);border-radius:12px;padding:14px;box-shadow:var(--sh)">${v.replace(/\n/g,'<br>')}</div>
-  </div>`:'';
-
-  // Cards from diagnostic
   let cardsHTML='';
   if(s.dr&&s.dr.cards){
-    cardsHTML=`<div style="margin-top:20px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:14px">Карты сессии</div>
-      ${s.dr.cards.map((c,i)=>{
-        const bc=c.dn==='resurs'?'#52b788':c.dn==='strahi'?'#e63946':'#7b5ea7';
-        const imgUrl=CARD_IMGS&&CARD_IMGS[c.dn]?CARD_IMGS[c.dn][c.imgIdx]||'':'';
-        const dn_label={resurs:'Ресурс',strahi:'Страхи',momenty:'Моменты'}[c.dn]||c.dn;
-        const noteText=s.dr.notes&&s.dr.notes[i];
-        return`<div style="background:var(--surface);border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:var(--sh);border-left:3px solid ${bc}">
-          <div style="display:flex;gap:12px;padding:14px;align-items:flex-start">
-            <div style="width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f0ebe4">
-              ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#c49a6c;font-size:10px;text-align:center;padding:4px">${dn_label}</div>`}
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Шаг ${i+1} · ${dn_label}</div>
-              <div style="font-size:13px;font-weight:600;line-height:1.4">${s.dr&&s.dr.ch&&s.dr.ch.q?s.dr.ch.q[i]:(s.dr&&s.dr.cards&&s.dr.cards[i]&&s.dr.cards[i].q?s.dr.cards[i].q:'')}</div>
-            </div>
-          </div>
-          ${noteText&&!isSpec?`<div style="padding:10px 14px 12px;background:#f8f4ef;border-top:1px solid var(--border);font-size:12px;color:var(--text2);font-style:italic">📝 ${noteText}</div>`:''}
-          ${isSpec?`<div style="padding:10px 14px 12px;background:#f8f4ef;border-top:1px solid var(--border)">
-            ${noteText?`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-style:italic">Клиент: ${noteText}</div>`:''}
-            ${s.dr.specNotes&&s.dr.specNotes[i]?`<div style="font-size:12px;color:var(--accent);font-style:italic">🔒 Я: ${s.dr.specNotes[i]}</div>`:''}
-          </div>`:''}
-        </div>`;
-      }).join('')}
-    </div>`;
+    cardsHTML=`<div style="margin-top:22px"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:14px">Карты диагностики</div>${s.dr.cards.map((c,i)=>{
+      const bc=c.dn==='resurs'?'#52b788':c.dn==='strahi'?'#e63946':'#7b5ea7';
+      const imgUrl=CARD_IMGS&&CARD_IMGS[c.dn]?CARD_IMGS[c.dn][c.imgIdx]||'':'';
+      const noteText=s.dr.notes&&s.dr.notes[i];
+      return `<div style="background:var(--surface);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid ${bc};box-shadow:var(--sh)">${imgUrl?`<img src="${imgUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;float:left;margin-right:12px;margin-bottom:6px">`:''}<div style="font-size:12px;font-weight:600">${escHTML(s.dr?.ch?.q?.[i]||'')}</div>${noteText?`<div style="font-size:12px;color:var(--text2);margin-top:6px">${escHTML(noteText)}</div>`:''}<div style="clear:both"></div></div>`;
+    }).join('')}</div>`;
   }
 
-  // Edit button for specialist
-  const editBtn=isSpec?`<div style="display:flex;gap:10px;margin-top:16px">
-    <button onclick="window.editSession('${s.id}')" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">✏️ Редактировать</button>
-    <button onclick="window.deleteSession('${s.id}')" style="padding:12px 16px;border-radius:12px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🗑️</button>
-  </div>`:'';
+  const clientPrompt=!isSpec?`<div style="background:${done?'#e8f5e9':'#fff8e1'};border-radius:14px;padding:16px;margin-bottom:20px;border-left:4px solid ${done?'#2e7d32':'#d4a853'}">
+      <div style="font-weight:700;font-size:14px;margin-bottom:5px">${done?'✓ Итог сессии заполнен':'Зафиксируйте итог встречи ✦'}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.55">${done?'Вы можете в любой момент вернуться и дополнить свои записи.':'После встречи уделите 3–5 минут трём полям: «Мои инсайты», «С чем я ухожу» и «Мои следующие действия».'}</div>
+    </div>`:'';
 
   sdc.innerHTML=`
-    <div style="margin-bottom:20px">
+    <div style="margin-bottom:18px">
       <div style="font-size:12px;color:var(--text2)">${dateStr(s.date,s.sessionTime)}</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:26px">${escHTML(meetingTypeLabel(s.type,s.typeName))}</div>
-      ${cl&&isSpec?`<div style="font-size:13px;color:var(--text2)">${cl.fullName}</div>`:''}
-      ${s.payment&&isSpec?`<div style="font-size:15px;font-weight:700;color:var(--accent);margin-top:4px">${s.payment}₸</div>`:''}
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;line-height:1.15">${escHTML(meetingTypeLabel(s.type,s.typeName))}</div>
+      ${cl&&isSpec?`<div style="font-size:13px;color:var(--text2);margin-top:4px">${escHTML(cl.fullName||'')}</div>`:''}
+      <div id="session-save-status" style="font-size:11px;color:#2e7d32;margin-top:8px">Сохранено ✓</div>
     </div>
-    ${s.stateBefore||s.stateAfter?`<div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--sh)">
-      <div style="display:flex;justify-content:space-around;text-align:center">
-        <div><div style="font-size:36px;font-weight:300;color:var(--accent);font-family:'Cormorant Garamond',serif">${s.stateBefore||'—'}</div><div style="font-size:12px;color:var(--text2)">До встречи</div></div>
-        <div style="font-size:24px;padding-top:8px;color:var(--text2)">→</div>
-        <div><div style="font-size:36px;font-weight:300;color:var(--accent);font-family:'Cormorant Garamond',serif">${s.stateAfter||'—'}</div><div style="font-size:12px;color:var(--text2)">После встречи</div></div>
-      </div>
-    </div>`:''}
-    ${fld('Запрос',s.request)}
-    ${s.summary?fld('Итоги встречи',s.summary,'#2c7a4b'):''}
-    ${isSpec?fld('Заметки специалиста',s.specNotes||s.notes,'#7a5c2e'):''}
-    ${isSpec?fld('Инсайты',s.insights):''}
-    ${fld('Рекомендации',s.actions)}
+    ${clientPrompt}
+    ${sessionTextarea(s.id,'Запрос','request',s.request,isSpec,false,'Сформулированный запрос клиента')}
+    ${sessionTextarea(s.id,'Желаемый результат','desiredResult',s.desiredResult,isSpec,false,'Какой результат встречи будет полезен')}
+    ${sessionTextarea(s.id,'Мои инсайты','insights',s.insights,true,false,'Ключевые мысли и осознания')}
+    ${sessionTextarea(s.id,'С чем я ухожу','takeaway',takeaway,true,false,'Главный итог встречи')}
+    ${sessionTextarea(s.id,'Мои следующие действия','nextActions',nextActions,true,false,'Что я выбираю сделать дальше')}
+    ${isSpec
+      ? sessionTextarea(s.id,'Комментарий специалиста · видит клиент','specialistComment',s.specialistComment,true,false,'Необязательный комментарий клиенту')
+      : (s.specialistComment?sessionTextarea(s.id,'Комментарий специалиста','specialistComment',s.specialistComment,false,false,''):'')}
+    ${isSpec?sessionTextarea(s.id,'🔒 Только для специалиста','privateNote',privateNote,true,true,'Ваши приватные записи. Клиент это поле не увидит.') : ''}
+    ${isSpec?`<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">Оплата, ₸</div><input data-session-id="${escHTML(s.id)}" data-field="payment" oninput="window.sessionFieldChanged(this)" type="number" min="0" value="${escHTML(s.payment||'')}" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;background:#fff"></div>`:''}
     ${cardsHTML}
-    ${editBtn}
-    ${!isSpec&&s.id?`<div style="margin-top:20px">
-      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Мои личные заметки</div>
-      <textarea id="client-note-${s.id}" style="width:100%;min-height:80px;padding:12px 16px;border:1px solid var(--border);border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;background:var(--bg);resize:vertical;outline:none" placeholder="Ваши личные заметки к этой сессии...">${s.clientNote||''}</textarea>
-      <button onclick="window.saveClientNote('${s.id}')" style="margin-top:8px;width:100%;padding:11px;border-radius:10px;border:none;background:var(--accent2);color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Сохранить заметку</button>
-    </div>`:''}
+    ${isSpec?`<div style="display:flex;gap:10px;margin-top:18px"><button onclick="window.editSession('${escHTML(s.id)}')" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">Изменить дату / тип</button><button onclick="window.deleteSession('${escHTML(s.id)}')" style="padding:11px 15px;border-radius:10px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">🗑 Удалить</button></div>`:''}
   `;
 }
 
@@ -1766,19 +1793,15 @@ function editSession(sid) {
   const nsd=g('nsd');if(nsd)nsd.value=s.sessionDate||s.date?.toDate?.().toISOString().split('T')[0]||'';
   const nstm=g('nstm');if(nstm)nstm.value=s.sessionTime||'10:00';
   const nsr=g('nsr');if(nsr)nsr.value=s.request||'';
-  const nsn=g('nsn');if(nsn)nsn.value=s.notes||'';
+  const ng=g('nsgoal');if(ng)ng.value=s.desiredResult||'';
   const nsi=g('nsi');if(nsi)nsi.value=s.insights||'';
-  const nsa=g('nsa');if(nsa)nsa.value=s.actions||'';
-  const nssum=g('nssum');if(nssum)nssum.value=s.summary||'';
-  const nsb=g('nsb');if(nsb)nsb.value=s.stateBefore||'';
-  const nsa2=g('nsa2');if(nsa2)nsa2.value=s.stateAfter||'';
-  const nspay=g('nspay');if(nspay)nspay.value=s.payment||'';
-  // Change save button to update
+  const nt=g('nstake');if(nt)nt.value=s.takeaway||s.summary||'';
+  const na=g('nsactions');if(na)na.value=s.nextActions||s.actions||'';
+  const nc=g('nscomment');if(nc)nc.value=s.specialistComment||'';
+  const np=g('nsprivate');if(np)np.value=s.privateNote||s.specNotes||(!s.dr?s.notes:'')||'';
+  const pay=g('nspay');if(pay)pay.value=s.payment||'';
   const btn=g('btn-save-ns');
-  if(btn){
-    btn.textContent='Сохранить изменения';
-    btn.onclick=()=>window.updateSession(sid);
-  }
+  if(btn){btn.textContent='Сохранить изменения';btn.onclick=()=>window.updateSession(sid);}
   openM('m-ns');
 }
 
@@ -1792,51 +1815,34 @@ async function deleteSession(sid) {
 }
 
 async function saveClientNote(sid) {
-  const ta=g('client-note-'+sid);
-  if(!ta) return;
-  try {
-    await db.collection('sessions').doc(sid).update({clientNote:ta.value});
-    toast('Заметка сохранена ✦');
-  } catch(e){toast('Ошибка: '+e.message);}
+  const ta=g('client-note-'+sid); if(!ta) return;
+  try { await db.collection('sessions').doc(sid).update({clientNote:ta.value}); toast('Заметка сохранена ✦'); }
+  catch(e){toast('Ошибка: '+e.message);}
 }
 
 async function updateSession(sid) {
   const sessDate=g('nsd')?.value||'';
-  const sessTime=g('nstm')?.value||'';
+  const sessTime=g('nstm')?.value||'10:00';
   const updateType=g('nst')?.value||'consultation';
+  const takeaway=g('nstake')?.value||'';
+  const nextActions=g('nsactions')?.value||'';
   const updateData={
-    type:updateType, typeName:meetingTypeLabel(updateType),
-    request:g('nsr')?.value||'',
-    notes:g('nsn')?.value||'',
-    insights:g('nsi')?.value||'',
-    actions:g('nsa')?.value||'',
-    summary:g('nssum')?.value||'',
-    stateBefore:g('nsb')?.value||'',
-    stateAfter:g('nsa2')?.value||'',
-    payment:g('nspay')?.value||''
+    type:updateType,typeName:meetingTypeLabel(updateType),
+    request:g('nsr')?.value||'',desiredResult:g('nsgoal')?.value||'',insights:g('nsi')?.value||'',
+    takeaway,summary:takeaway,nextActions,actions:nextActions,
+    specialistComment:g('nscomment')?.value||'',privateNote:g('nsprivate')?.value||'',payment:g('nspay')?.value||'',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   };
-  if(sessDate) {
-    updateData.sessionDate=sessDate;
-    updateData.sessionTime=sessTime;
+  if(sessDate){
+    updateData.sessionDate=sessDate; updateData.sessionTime=sessTime;
     updateData.date=firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime));
   }
   try {
     await db.collection('sessions').doc(sid).update(updateData);
-    // Update calendar if date changed
-    if(sessDate&&sessTime&&CU.uid){
-      const schedRef=db.collection('schedule').doc(CU.uid);
-      const schedSnap=await schedRef.get();
-      const slots=schedSnap.exists?(schedSnap.data().slots||{}):{};
-      if(!slots[sessDate]) slots[sessDate]={};
-      slots[sessDate][sessTime]='booked';
-      await schedRef.set({slots},{merge:true});
-    }
+    const local=sessions.find(x=>x.id===sid); if(local) Object.assign(local,updateData);
     closeM('m-ns');
-    // Reset save button
-    const btn=g('btn-save-ns');
-    if(btn){btn.textContent='Сохранить';btn.onclick=()=>window.saveNS();}
+    const btn=g('btn-save-ns'); if(btn){btn.textContent='Создать сессию';btn.onclick=()=>window.saveNS();}
     toast('Сессия обновлена ✦');
-    // Refresh view
     openSD(sid);
   } catch(e){toast('Ошибка: '+e.message);}
 }
@@ -2826,6 +2832,106 @@ async function saveMyData() {
   } catch(e){toast('Ошибка: '+e.message);}
 }
 
+
+// ===== WORKING SESSION FROM CONFIRMED BOOKING =====
+const startingBookingSessions=new Set();
+async function startSessionFromBooking(bookingId){
+  if(CU?.role!=='specialist') return;
+  const booking=(window._currentBookings||[]).find(b=>b.id===bookingId) || calBookings.find(b=>b.id===bookingId);
+  if(!booking){toast('Встреча не найдена');return;}
+  const existing=sessions.find(s=>s.bookingId===bookingId);
+  if(existing){openSD(existing.id);return;}
+  if(startingBookingSessions.has(bookingId)){toast('Сессия уже создаётся…');return;}
+  startingBookingSessions.add(bookingId);
+  try {
+    if(booking.sessionId){
+      const known=sessions.find(s=>s.id===booking.sessionId);
+      if(known){startingBookingSessions.delete(bookingId);openSD(known.id);return;}
+      const knownDoc=await db.collection('sessions').doc(booking.sessionId).get();
+      if(knownDoc.exists){
+        const loaded={id:knownDoc.id,...knownDoc.data()}; sessions.push(loaded);
+        startingBookingSessions.delete(bookingId); openSD(loaded.id); return;
+      }
+    }
+    const remote=await db.collection('sessions').where('bookingId','==',bookingId).limit(1).get();
+    if(!remote.empty){
+      const d=remote.docs[0]; const loaded={id:d.id,...d.data()};
+      if(!sessions.some(x=>x.id===d.id)) sessions.push(loaded);
+      await db.collection('bookings').doc(bookingId).set({sessionId:d.id},{merge:true});
+      startingBookingSessions.delete(bookingId); openSD(d.id); return;
+    }
+    let clientId=booking.clientDocId||clients.find(c=>c.clientUid&&c.clientUid===booking.clientUid)?.id||null;
+    let clientUid=booking.clientUid||null;
+    if(!clientId){
+      const newClient=await db.collection('clients').add({
+        fullName:booking.clientName||'Клиент',
+        email:booking.clientEmail||'',
+        contacts:booking.clientContact||'',
+        specialistId:CU.uid,
+        clientUid:clientUid,
+        status:'active',
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      clientId=newClient.id;
+      clients.push({id:clientId,fullName:booking.clientName||'Клиент',email:booking.clientEmail||'',contacts:booking.clientContact||'',specialistId:CU.uid,clientUid,status:'active'});
+      await db.collection('bookings').doc(bookingId).update({clientDocId:clientId});
+    }
+    const dateVal=firebase.firestore.Timestamp.fromDate(new Date(booking.date+'T'+(booking.time||'10:00')));
+    const data={
+      bookingId,
+      clientId,clientUid,
+      specialistId:CU.uid,
+      date:dateVal,sessionDate:booking.date||'',sessionTime:booking.time||'',
+      type:booking.type||'consultation',typeName:meetingTypeLabel(booking.type||'consultation',booking.typeName||''),
+      request:'',desiredResult:'',insights:'',takeaway:'',summary:'',nextActions:'',actions:'',specialistComment:'',privateNote:'',payment:'',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const ref=await db.collection('sessions').add(data);
+    await db.collection('bookings').doc(bookingId).update({sessionId:ref.id,sessionStartedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    sessions.push({id:ref.id,...data});
+    startingBookingSessions.delete(bookingId);
+    toast('Сессия начата ✦');
+    openSD(ref.id);
+  } catch(e){startingBookingSessions.delete(bookingId);toast('Ошибка: '+e.message);}
+}
+
+function showClientUpcomingMeeting(bookings) {
+  const el=g('client-upcoming-meeting'); if(!el) return;
+  const now=new Date();
+  const upcoming=bookings.filter(b=>b.status==='confirmed'&&new Date(b.date+'T'+b.time)>now)
+    .sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  const pending=bookings.filter(b=>b.status==='pending');
+  if(upcoming.length) {
+    const m=upcoming[0];
+    const linked=sessions.find(s=>s.bookingId===m.id);
+    el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
+      <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
+      <div style="font-size:14px;font-weight:600">${new Date(m.date+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
+      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button onclick="window.startSessionFromBooking('${m.id}')" style="flex:1;padding:9px 12px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">${linked?'Открыть сессию':'Начать сессию'}</button><button onclick="window.openConfirmBooking('${m.id}')" style="padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;cursor:pointer">Изм.</button></div>
+    </div>`;
+  } else if(pending.length) {
+    const p=pending[0];
+    el.innerHTML=`<div style="background:#fff8e1;border-radius:12px;padding:14px;border-left:3px solid #ff8f00"><div style="font-size:11px;color:#ff8f00;font-weight:600;margin-bottom:4px">⏳ Запрос на встречу</div><div style="font-size:14px;font-weight:600">${new Date(p.date+'T'+p.time).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${p.time}</div><div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(p.type,p.typeName))}${p.comment?' · '+escHTML(p.comment):''}</div><button onclick="window.openConfirmBooking('${p.id}')" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Подтвердить / отклонить</button></div>`;
+  } else { el.innerHTML=''; }
+}
+
+function buildMeetingCard(b,isPast,tl) {
+  const dt=new Date(b.date+'T'+(b.time||'12:00'));
+  const dtStr=dt.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})+' в '+(b.time||'—');
+  const cl=clients.find(c=>c.clientUid===b.clientUid)||clients.find(c=>c.id===b.clientDocId);
+  const name=cl?.fullName||b.clientName||b.clientContact||'Клиент';
+  const linked=sessions.find(s=>s.bookingId===b.id);
+  let html='<div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:var(--sh);opacity:'+(isPast?'0.78':'1')+';border-left:3px solid '+(isPast?'var(--border)':'#2e7d32')+'">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text2);margin-bottom:3px">'+dtStr+'</div><div style="font-size:15px;font-weight:600;margin-bottom:3px">'+escHTML(name)+'</div><div style="font-size:12px;color:var(--text2)">'+escHTML(meetingTypeLabel(b.type,b.typeName))+'</div></div>';
+  if(!isPast) html+='<button onclick="openConfirmBooking(this.dataset.id)" data-id="'+b.id+'" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent2);background:transparent;color:var(--accent2);font-size:13px;cursor:pointer;flex-shrink:0;margin-left:10px">✏️ Изм.</button>';
+  html+='</div>';
+  if(b.meetLink) html+='<a href="'+b.meetLink+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;background:var(--accent);color:#fff;border-radius:8px;font-size:12px;text-decoration:none;font-weight:600">🎥 Google Meet</a>';
+  html+='<button onclick="window.startSessionFromBooking(this.dataset.id)" data-id="'+b.id+'" style="width:100%;margin-top:10px;padding:10px;border-radius:9px;border:none;background:'+(linked?'#6f7f6b':'linear-gradient(135deg,var(--accent),var(--accent2))')+';color:#fff;font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:700;cursor:pointer">'+(linked?'Открыть рабочую страницу':'▶ Начать сессию')+'</button>';
+  html+='</div>';
+  return html;
+}
+
 // ===== EXPOSE TO WINDOW =====
 window.doLogin=doLogin; window.setAuthMode=setAuthMode; window.setRole=setRole;
 window.logout=logout; window.navTo=navTo; window.goBack=goBack;
@@ -2835,7 +2941,7 @@ window.calcMx=calcMx; window.saveML=saveML; window.openML=openML;
 window.filterC=filterC; window.flipCard=flipCard; window.dNext=dNext; window.dPrev=dPrev;
 window.exitDiag=exitDiag; window.startDiag=startDiag; window.startClientDiag=startClientDiag;
 window.updSt=updSt; window.deleteClient=deleteClient; window.addMeetingType=addMeetingType; window.quickAddMeetingType=quickAddMeetingType; window.removeMeetingType=removeMeetingType; window.startDiagSteps=startDiagSteps; window.showChakraInfo=showChakraInfo; window.editSession=editSession; window.updateSession=updateSession; window.deleteSession=deleteSession; window.saveClientNote=saveClientNote; window.saveClientData=saveClientData; window.saveMyData=saveMyData; window.showCalendar=showCalendar; window.openPublicBooking=openPublicBooking; window.pubSelectSlot=pubSelectSlot; window.pubCalPrev=pubCalPrev; window.pubCalNext=pubCalNext; window.sendPublicBooking=sendPublicBooking; window.calPrevWeek=calPrevWeek; window.calNextWeek=calNextWeek; window.toggleSlot=toggleSlot; window.openBookingWithSlots=openBookingWithSlots; window.selectSlot=selectSlot; window.sendBooking=sendBooking; window.sendBooking=sendBooking; window.confirmBooking=confirmBooking; window.rejectBooking=rejectBooking; window.rejectBookingDirect=rejectBookingDirect; window.editBookingFromCal=editBookingFromCal; window.openConfirmBooking=openConfirmBooking; window.swTab=swTab; window.openNewSess=openNewSess;
-window.applySessionFilters=applySessionFilters; window.resetSessionFilters=resetSessionFilters;
+window.applySessionFilters=applySessionFilters; window.resetSessionFilters=resetSessionFilters; window.sessionFieldChanged=sessionFieldChanged; window.startSessionFromBooking=startSessionFromBooking;
 window.resetPassword=resetPassword;
 
 // ===== INIT =====
