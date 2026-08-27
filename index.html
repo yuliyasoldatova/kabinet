@@ -1597,7 +1597,7 @@ function openNewSess(){
   populateMeetingTypeSelect('nst');
   resetNewSessionForm();
   const nsd=g('nsd');
-  if(nsd) nsd.value=new Date().toISOString().split('T')[0];
+  if(nsd) nsd.value=dateKey(new Date());
   const btn=g('btn-save-ns');
   if(btn){btn.textContent='Создать сессию';btn.onclick=()=>window.saveNS();}
   openM('m-ns');
@@ -1862,7 +1862,7 @@ function editSession(sid) {
   const s=sessions.find(x=>x.id===sid); if(!s) return;
   populateMeetingTypeSelect('nst',s.type||'consultation',s.typeName||'');
   const nst=g('nst');if(nst)nst.value=s.type||'consultation';
-  const nsd=g('nsd');if(nsd)nsd.value=s.sessionDate||s.date?.toDate?.().toISOString().split('T')[0]||'';
+  const nsd=g('nsd');if(nsd)nsd.value=s.sessionDate||(s.date?.toDate?dateKey(s.date.toDate()):'');
   const nstm=g('nstm');if(nstm)nstm.value=s.sessionTime||'10:00';
   const nsr=g('nsr');if(nsr)nsr.value=s.request||'';
   const ng=g('nsgoal');if(ng)ng.value=s.desiredResult||'';
@@ -2711,7 +2711,12 @@ function getWeekDates(offset) {
 }
 
 function dateKey(date) {
-  return date.toISOString().split('T')[0];
+  // Use the browser's LOCAL calendar date. UTC/ISO shifts dates backward around midnight in + time zones.
+  if(!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const y=date.getFullYear();
+  const m=String(date.getMonth()+1).padStart(2,'0');
+  const d=String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
 }
 
 function showCalendar() {
