@@ -1262,6 +1262,42 @@ auth.onAuthStateChanged(async user => {
   }
 });
 
+let syncingManualSessionBookings=false;
+async function ensureManualSessionBookings(){
+  if(syncingManualSessionBookings||CU?.role!=='specialist') return;
+  const candidates=sessions.filter(s=>s.sessionDate&&s.sessionTime&&!s.bookingId);
+  if(!candidates.length) return;
+  // Wait until client cards are loaded so migrated meetings keep the correct name/contact.
+  if(candidates.some(s=>s.clientId)&&!clients.length) return;
+  syncingManualSessionBookings=true;
+  try{
+    const snap=await db.collection('bookings').where('specialistUid','==',CU.uid).get();
+    const existing=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const batch=db.batch(); let changed=false;
+    for(const s of candidates){
+      const cl=clients.find(c=>c.id===s.clientId);
+      // Prefer linking an already existing booking for the same client and slot.
+      const same=existing.find(b=>b.status==='confirmed'&&b.date===s.sessionDate&&(b.time||'')===s.sessionTime&&!b.sessionId&&(
+        (s.clientId&&b.clientDocId===s.clientId)||(s.clientUid&&b.clientUid===s.clientUid)
+      ));
+      if(same){
+        batch.update(db.collection('sessions').doc(s.id),{bookingId:same.id});
+        batch.update(db.collection('bookings').doc(same.id),{sessionId:s.id});
+        same.sessionId=s.id; changed=true; continue;
+      }
+      const occupied=existing.some(b=>b.status==='confirmed'&&b.date===s.sessionDate&&(b.time||'')===s.sessionTime);
+      if(occupied) continue;
+      const bRef=db.collection('bookings').doc();
+      batch.set(bRef,manualBookingData(cl,s.sessionDate,s.sessionTime,s.type||'consultation',meetingTypeLabel(s.type||'consultation',s.typeName||''),s.id,s.request||''));
+      batch.update(db.collection('sessions').doc(s.id),{bookingId:bRef.id,source:s.source||'specialist'});
+      existing.push({id:bRef.id,date:s.sessionDate,time:s.sessionTime,status:'confirmed',sessionId:s.id,clientDocId:s.clientId,clientUid:s.clientUid});
+      changed=true;
+    }
+    if(changed) await batch.commit();
+  }catch(e){console.error('Manual session calendar sync error:',e);}
+  finally{syncingManualSessionBookings=false;}
+}
+
 // ===== REALTIME LISTENERS =====
 function startSpecialistListeners() {
   stopListeners();
@@ -1269,6 +1305,7 @@ function startSpecialistListeners() {
   unsubClients=db.collection('clients').where('specialistId','==',CU.uid)
     .onSnapshot(snap=>{
       clients=snap.docs.map(d=>({id:d.id,...d.data()}));
+      ensureManualSessionBookings();
       const act=document.querySelector('.screen.active');
       if(act){
         if(act.id==='s-dash') rDash();
@@ -1279,6 +1316,7 @@ function startSpecialistListeners() {
   unsubSessions=db.collection('sessions').where('specialistId','==',CU.uid)
     .onSnapshot(snap=>{
       sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+      ensureManualSessionBookings();
       const act=document.querySelector('.screen.active');
       if(act){
         if(act.id==='s-dash') rDash();
@@ -1565,49 +1603,83 @@ function openNewSess(){
   openM('m-ns');
 }
 
+async function findScheduleConflict(date,time,excludeBookingId='',excludeSessionId='') {
+  if(!date||!time||!CU?.uid) return null;
+  // A working session with the same slot also counts as occupied.
+  const localSession=sessions.find(s=>s.id!==excludeSessionId && getSessionDateKey(s)===date && (s.sessionTime||'')===time);
+  if(localSession) return {kind:'session',id:localSession.id};
+  const snap=await db.collection('bookings').where('specialistUid','==',CU.uid).where('status','==','confirmed').get();
+  const hit=snap.docs.find(d=>{
+    if(d.id===excludeBookingId) return false;
+    const b=d.data();
+    if(excludeSessionId && b.sessionId===excludeSessionId) return false;
+    return b.date===date && (b.time||'')===time;
+  });
+  return hit?{kind:'booking',id:hit.id,data:hit.data()}:null;
+}
+
+function manualBookingData(cl,date,time,type,typeName,sessionId,request='') {
+  return {
+    clientUid:cl?.clientUid||null,
+    clientDocId:cl?.id||null,
+    clientName:cl?.fullName||'Клиент',
+    clientEmail:cl?.email||'',
+    clientContact:cl?.contacts||'',
+    specialistUid:CU.uid,
+    date,time,type,typeName,
+    comment:request||'',
+    status:'confirmed',
+    source:'specialist',
+    sessionId,
+    confirmedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
 async function saveNS() {
   if(!CID) { toast('Сначала выберите клиента'); return; }
   const cl=clients.find(c=>c.id===CID);
   const sessDate=g('nsd')?.value||'';
   const sessTime=g('nstm')?.value||'10:00';
-  const dateVal=sessDate
-    ? firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime))
-    : firebase.firestore.FieldValue.serverTimestamp();
+  if(!sessDate){toast('Укажите дату сессии');return;}
   const sessType=g('nst')?.value||'consultation';
-  const takeaway=g('nstake')?.value||'';
-  const nextActions=g('nsactions')?.value||'';
-  const data={
-    clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
-    date:dateVal, sessionDate:sessDate, sessionTime:sessTime,
-    type:sessType, typeName:meetingTypeLabel(sessType),
-    request:g('nsr')?.value||'',
-    desiredResult:g('nsgoal')?.value||'',
-    insights:g('nsi')?.value||'',
-    takeaway, summary:takeaway,
-    nextActions, actions:nextActions,
-    specialistComment:g('nscomment')?.value||'',
-    privateNote:g('nsprivate')?.value||'',
-    payment:g('nspay')?.value||'',
-    createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  };
+  const typeName=meetingTypeLabel(sessType);
   try {
-    const ref=await db.collection('sessions').add(data);
-    if(cl?.status==='new') await db.collection('clients').doc(CID).update({status:'active'});
-    if(sessDate&&sessTime&&CU.uid) {
-      try {
-        const schedRef=db.collection('schedule').doc(CU.uid);
-        const schedSnap=await schedRef.get();
-        const slots=schedSnap.exists?(schedSnap.data().slots||{}):{};
-        if(!slots[sessDate]) slots[sessDate]={};
-        slots[sessDate][sessTime]='booked';
-        await schedRef.set({slots},{merge:true});
-      } catch(e){console.error('Calendar update error:',e);}
-    }
+    const conflict=await findScheduleConflict(sessDate,sessTime);
+    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const dateVal=firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime));
+    const takeaway=g('nstake')?.value||'';
+    const nextActions=g('nsactions')?.value||'';
+    const sessionRef=db.collection('sessions').doc();
+    const bookingRef=db.collection('bookings').doc();
+    const data={
+      bookingId:bookingRef.id,
+      clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
+      date:dateVal, sessionDate:sessDate, sessionTime:sessTime,
+      type:sessType, typeName,
+      request:g('nsr')?.value||'',
+      desiredResult:g('nsgoal')?.value||'',
+      insights:g('nsi')?.value||'',
+      takeaway, summary:takeaway,
+      nextActions, actions:nextActions,
+      specialistComment:g('nscomment')?.value||'',
+      privateNote:g('nsprivate')?.value||'',
+      payment:g('nspay')?.value||'',
+      source:'specialist',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const bookingData=manualBookingData(cl,sessDate,sessTime,sessType,typeName,sessionRef.id,data.request);
+    const batch=db.batch();
+    batch.set(sessionRef,data);
+    batch.set(bookingRef,bookingData);
+    if(cl?.status==='new') batch.update(db.collection('clients').doc(CID),{status:'active'});
+    await batch.commit();
     closeM('m-ns');
-    if(!sessions.some(x=>x.id===ref.id)) sessions.push({id:ref.id,...data});
+    if(!sessions.some(x=>x.id===sessionRef.id)) sessions.push({id:sessionRef.id,...data});
+    window._currentBookings=(window._currentBookings||[]).concat([{id:bookingRef.id,...bookingData}]);
     resetNewSessionForm();
-    toast('Рабочая страница сессии создана ✦');
-    openSD(ref.id);
+    toast('Сессия создана и добавлена в график ✦');
+    openSD(sessionRef.id);
   } catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -1808,7 +1880,21 @@ function editSession(sid) {
 async function deleteSession(sid) {
   if(!confirm('Удалить эту сессию? Действие нельзя отменить.')) return;
   try {
-    await db.collection('sessions').doc(sid).delete();
+    const s=sessions.find(x=>x.id===sid);
+    const batch=db.batch();
+    batch.delete(db.collection('sessions').doc(sid));
+    if(s?.bookingId){
+      const bRef=db.collection('bookings').doc(s.bookingId);
+      const bSnap=await bRef.get();
+      if(bSnap.exists){
+        const b=bSnap.data();
+        if(b.source==='specialist') batch.delete(bRef);
+        else batch.update(bRef,{sessionId:firebase.firestore.FieldValue.delete()});
+      }
+    }
+    await batch.commit();
+    sessions=sessions.filter(x=>x.id!==sid);
+    if(s?.bookingId) window._currentBookings=(window._currentBookings||[]).filter(b=>b.id!==s.bookingId);
     toast('Сессия удалена');
     goBack();
   } catch(e){toast('Ошибка: '+e.message);}
@@ -1821,28 +1907,55 @@ async function saveClientNote(sid) {
 }
 
 async function updateSession(sid) {
+  const current=sessions.find(x=>x.id===sid);
+  if(!current){toast('Сессия не найдена');return;}
   const sessDate=g('nsd')?.value||'';
   const sessTime=g('nstm')?.value||'10:00';
+  if(!sessDate){toast('Укажите дату сессии');return;}
   const updateType=g('nst')?.value||'consultation';
+  const typeName=meetingTypeLabel(updateType);
   const takeaway=g('nstake')?.value||'';
   const nextActions=g('nsactions')?.value||'';
   const updateData={
-    type:updateType,typeName:meetingTypeLabel(updateType),
+    type:updateType,typeName,
     request:g('nsr')?.value||'',desiredResult:g('nsgoal')?.value||'',insights:g('nsi')?.value||'',
     takeaway,summary:takeaway,nextActions,actions:nextActions,
     specialistComment:g('nscomment')?.value||'',privateNote:g('nsprivate')?.value||'',payment:g('nspay')?.value||'',
+    sessionDate:sessDate,sessionTime:sessTime,
+    date:firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime)),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   };
-  if(sessDate){
-    updateData.sessionDate=sessDate; updateData.sessionTime=sessTime;
-    updateData.date=firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime));
-  }
   try {
-    await db.collection('sessions').doc(sid).update(updateData);
-    const local=sessions.find(x=>x.id===sid); if(local) Object.assign(local,updateData);
+    const conflict=await findScheduleConflict(sessDate,sessTime,current.bookingId||'',sid);
+    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const cl=clients.find(c=>c.id===current.clientId);
+    const batch=db.batch();
+    const sRef=db.collection('sessions').doc(sid);
+    let bookingId=current.bookingId||'';
+    let bRef=null,bExists=false;
+    if(bookingId){
+      bRef=db.collection('bookings').doc(bookingId);
+      const bSnap=await bRef.get(); bExists=bSnap.exists;
+    }
+    if(!bookingId||!bExists){
+      bRef=db.collection('bookings').doc(); bookingId=bRef.id;
+      updateData.bookingId=bookingId;
+      batch.set(bRef,manualBookingData(cl,sessDate,sessTime,updateType,typeName,sid,updateData.request));
+    } else {
+      batch.update(bRef,{
+        date:sessDate,time:sessTime,type:updateType,typeName,
+        comment:updateData.request||'',clientDocId:current.clientId||cl?.id||null,
+        clientUid:current.clientUid||cl?.clientUid||null,clientName:cl?.fullName||'Клиент',
+        sessionId:sid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    batch.update(sRef,updateData);
+    await batch.commit();
+    Object.assign(current,updateData);
+    current.bookingId=bookingId;
     closeM('m-ns');
     const btn=g('btn-save-ns'); if(btn){btn.textContent='Создать сессию';btn.onclick=()=>window.saveNS();}
-    toast('Сессия обновлена ✦');
+    toast('Сессия и график обновлены ✦');
     openSD(sid);
   } catch(e){toast('Ошибка: '+e.message);}
 }
@@ -2329,12 +2442,33 @@ async function confirmBooking() {
   const meetLink=g('confirm-meet-link')?.value||'';
   if(!date){toast('Укажите дату');return;}
   try {
-    await db.collection('bookings').doc(id).update({
+    let booking=(window._currentBookings||[]).find(b=>b.id===id) || calBookings.find(b=>b.id===id);
+    if(!booking){const snap=await db.collection('bookings').doc(id).get(); if(snap.exists) booking={id:snap.id,...snap.data()};}
+    if(!booking){toast('Встреча не найдена');return;}
+    const linked=sessions.find(s=>s.bookingId===id)||(booking.sessionId?sessions.find(s=>s.id===booking.sessionId):null);
+    const conflict=await findScheduleConflict(date,time,id,linked?.id||booking.sessionId||'');
+    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const batch=db.batch();
+    batch.update(db.collection('bookings').doc(id),{
       status:'confirmed', date, time, meetLink,
       confirmedAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    if(linked||booking.sessionId){
+      const sid=linked?.id||booking.sessionId;
+      const sUpdate={
+        sessionDate:date,sessionTime:time,
+        date:firebase.firestore.Timestamp.fromDate(new Date(date+'T'+time)),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      batch.update(db.collection('sessions').doc(sid),sUpdate);
+      if(linked) Object.assign(linked,sUpdate);
+    }
+    await batch.commit();
+    const local=(window._currentBookings||[]).find(b=>b.id===id); if(local){local.status='confirmed';local.date=date;local.time=time;local.meetLink=meetLink;}
+    const cal=calBookings.find(b=>b.id===id); if(cal){cal.status='confirmed';cal.date=date;cal.time=time;cal.meetLink=meetLink;}
     closeM('m-confirm-book');
-    toast('Встреча подтверждена ✦');
+    if(document.querySelector('.screen.active')?.id==='s-calendar'){renderCalendar();renderSpecialistMeetings();}
+    toast('Встреча и связанная сессия обновлены ✦');
   } catch(e){toast('Ошибка: '+e.message);}
 }
 
