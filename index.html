@@ -170,7 +170,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .lb{padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:18px;cursor:pointer}
 
 /* Sessions table */
-.sessions-toolbar{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(160px,1fr) auto;gap:12px;align-items:end;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.sessions-toolbar{display:grid;grid-template-columns:minmax(180px,1.25fr) minmax(160px,1fr) minmax(160px,1fr) auto;gap:12px;align-items:end;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
 .sessions-filter label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
 .sessions-filter .fsel,.sessions-filter .finp{margin:0;background:var(--bg)}
 .sessions-reset{height:43px;padding:0 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
@@ -267,6 +267,12 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div id="booking-requests-section" style="display:none;margin-bottom:24px">
       <div class="sec-title" style="color:#e65100">📅 Запросы на встречу</div>
       <div id="booking-requests-list"></div>
+    </div>
+    <div style="margin-bottom:24px">
+      <div class="sec-title">Сегодня</div>
+      <div id="dash-today-meetings"></div>
+      <div class="sec-title" style="margin-top:20px">Завтра</div>
+      <div id="dash-tomorrow-meetings"></div>
     </div>
     <div class="sec-title">Последние клиенты</div>
     <div id="dcl"></div>
@@ -373,6 +379,12 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
         <label for="sessions-client-filter">Клиент</label>
         <select id="sessions-client-filter" class="fsel" onchange="window.applySessionFilters()">
           <option value="">Все клиенты</option>
+        </select>
+      </div>
+      <div class="sessions-filter">
+        <label for="sessions-type-filter">Тип сессии</label>
+        <select id="sessions-type-filter" class="fsel" onchange="window.applySessionFilters()">
+          <option value="">Все типы</option>
         </select>
       </div>
       <div class="sessions-filter">
@@ -893,7 +905,7 @@ const TH={momenty:{g:'linear-gradient(135deg,#7b5ea7,#9d4edd,#c77dff)'},resurs:{
 // ===== STATE =====
 let CU=null, CID=null, diagState={}, screenHistory=[];
 let clients=[], sessions=[];
-let unsubClients=null, unsubSessions=null;
+let unsubClients=null, unsubSessions=null, unsubBookings=null;
 let authMode='login', authRole='specialist';
 let authAttemptRole=null, registrationInProgress=false;
 const DEFAULT_MEETING_TYPES=[
@@ -1326,6 +1338,7 @@ function startClientListeners(uid) {
 function stopListeners() {
   if(unsubClients){unsubClients();unsubClients=null;}
   if(unsubSessions){unsubSessions();unsubSessions=null;}
+  if(unsubBookings){unsubBookings();unsubBookings=null;}
 }
 
 // ===== NAVIGATION =====
@@ -1354,6 +1367,53 @@ function openM(id){const el=g(id);if(el)el.classList.add('open');}
 function closeM(id){const el=g(id);if(el)el.classList.remove('open');}
 
 // ===== DASHBOARD =====
+function clientCreatedMs(c){
+  const v=c?.createdAt;
+  if(!v) return Number.MAX_SAFE_INTEGER;
+  if(typeof v.toMillis==='function') return v.toMillis();
+  if(typeof v.toDate==='function') return v.toDate().getTime();
+  const d=new Date(v);
+  return Number.isNaN(d.getTime())?Number.MAX_SAFE_INTEGER:d.getTime();
+}
+function clientsByRegistrationAsc(){
+  return [...clients].sort((a,b)=>{
+    const diff=clientCreatedMs(a)-clientCreatedMs(b);
+    return diff||String(a.id||'').localeCompare(String(b.id||''));
+  });
+}
+function clientNumberMap(){
+  const map=new Map();
+  clientsByRegistrationAsc().forEach((c,i)=>map.set(c.id,i+1));
+  return map;
+}
+function dashboardMeetingHTML(b){
+  const cl=clients.find(c=>c.clientUid===b.clientUid)||clients.find(c=>c.id===b.clientDocId);
+  const name=cl?.fullName||b.clientName||b.clientContact||'Клиент';
+  const linked=sessions.find(s=>s.bookingId===b.id)||(b.sessionId?sessions.find(s=>s.id===b.sessionId):null);
+  const start=b.time||'—';
+  const dur=meetingDurationLabel(b.durationMinutes);
+  return `<div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:9px;box-shadow:var(--sh);border-left:3px solid #2e7d32">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div style="min-width:0">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:3px">${escHTML(start)} · ${escHTML(dur)}</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:3px">${escHTML(name)}</div>
+        <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(b.type,b.typeName))}</div>
+      </div>
+      <button onclick="window.startSessionFromBooking('${escHTML(b.id)}')" style="flex-shrink:0;padding:8px 10px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer">${linked?'Открыть':'Начать'}</button>
+    </div>
+  </div>`;
+}
+function renderDashboardMeetings(bookings){
+  const today=dateKey(new Date());
+  const tomorrow=addDaysToDateKey(today,1);
+  const confirmed=(bookings||[]).filter(b=>b.status==='confirmed');
+  const byDate=key=>confirmed.filter(b=>bookingDateKey(b)===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const todayItems=byDate(today), tomorrowItems=byDate(tomorrow);
+  const td=g('dash-today-meetings');
+  if(td) td.innerHTML=todayItems.length?todayItems.map(dashboardMeetingHTML).join(''):'<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">Сегодня встреч нет</div>';
+  const tm=g('dash-tomorrow-meetings');
+  if(tm) tm.innerHTML=tomorrowItems.length?tomorrowItems.map(dashboardMeetingHTML).join(''):'<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">На завтра встреч нет</div>';
+}
 function rDash() {
   const h=new Date().getHours();
   const gr=h<12?'Доброе утро':h<17?'Добрый день':'Добрый вечер';
@@ -1361,23 +1421,25 @@ function rDash() {
   const dd=g('dd2'); if(dd) dd.textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   const sc=g('sc1'); if(sc) sc.textContent=clients.length;
   const ss=g('ss1'); if(ss) ss.textContent=sessions.length;
+  renderDashboardMeetings(window._dashboardBookings||window._currentBookings||[]);
   const list=g('dcl'); if(!list) return;
-  const recent=[...clients].slice(-3).reverse();
-  list.innerHTML=recent.length?recent.map((c,i)=>ccHTML(c,i)).join(''):'<div class="empty"><div class="ei">🌱</div><div class="et">Клиентов пока нет</div></div>';
+  const nums=clientNumberMap();
+  const recent=[...clients].sort((a,b)=>clientCreatedMs(b)-clientCreatedMs(a)).slice(0,3);
+  list.innerHTML=recent.length?recent.map(c=>ccHTML(c,nums.get(c.id))).join(''):'<div class="empty"><div class="ei">🌱</div><div class="et">Клиентов пока нет</div></div>';
 }
 
-function ccHTML(c,idx) {
-  const ini=c.fullName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+function ccHTML(c,regNumber) {
+  const ini=(c.fullName||'').split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'•';
   const sm={new:'sn',active:'sa',done:'sd'},sl={new:'Новый',active:'Активный',done:'Завершён'};
   const cSess=sessions.filter(s=>s.clientId===c.id);
   const paid=cSess.reduce((sum,s)=>sum+(parseFloat(s.payment)||0),0);
   return `<div class="cc" onclick="window.openCP('${c.id}')">
     <div class="cav">${ini}</div>
     <div class="ci">
-      <div style="font-size:11px;color:var(--text2)">#${(idx||0)+1}</div>
-      <div class="cn">${c.fullName}</div>
+      <div style="font-size:11px;color:var(--text2)">#${regNumber||'—'}</div>
+      <div class="cn">${escHTML(c.fullName||'Без имени')}</div>
       ${c.email?`<div style="font-size:11px;color:var(--text2);word-break:break-all">${escHTML(c.email)}</div>`:''}
-      ${c.contacts?`<div style="font-size:11px;color:var(--text2)">${c.contacts}</div>`:''}
+      ${c.contacts?`<div style="font-size:11px;color:var(--text2)">${escHTML(c.contacts)}</div>`:''}
       <div style="font-size:11px;color:var(--text2)">${cSess.length} сесс.${paid?' · '+paid+'₸':''}</div>
     </div>
     <span class="sb ${sm[c.status]||'sn'}">${sl[c.status]||'Новый'}</span>
@@ -1388,8 +1450,9 @@ function ccHTML(c,idx) {
 function rClients(filter='') {
   const list=g('cl'); if(!list) return;
   const q=(filter||'').toLowerCase();
-  const x=clients.filter(c=>!q||[c.fullName,c.email,c.contacts].some(v=>(v||'').toLowerCase().includes(q)));
-  list.innerHTML=x.length?x.map((c,i)=>ccHTML(c,i)).join(''):'<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
+  const nums=clientNumberMap();
+  const x=clientsByRegistrationAsc().filter(c=>!q||[c.fullName,c.email,c.contacts].some(v=>(v||'').toLowerCase().includes(q)));
+  list.innerHTML=x.length?x.map(c=>ccHTML(c,nums.get(c.id))).join(''):'<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
 }
 function filterC(v){rClients(v);}
 
@@ -1764,6 +1827,19 @@ function fillSessionClientFilter() {
   if(items.some(c=>c.id===current)) sel.value=current;
 }
 
+function fillSessionTypeFilter(){
+  const sel=g('sessions-type-filter'); if(!sel) return;
+  const current=sel.value;
+  const types=new Map();
+  sessions.forEach(sess=>{
+    const id=sess.type||'consultation';
+    if(!types.has(id)) types.set(id,meetingTypeLabel(id,sess.typeName));
+  });
+  const items=[...types.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'ru'));
+  sel.innerHTML='<option value="">Все типы</option>'+items.map(([id,label])=>`<option value="${escHTML(id)}">${escHTML(label)}</option>`).join('');
+  if(types.has(current)) sel.value=current;
+}
+
 function sessionReflectionDone(s){
   return !!((s.insights||'').trim() && (s.takeaway||s.summary||'').trim() && (s.nextActions||s.actions||'').trim());
 }
@@ -1771,9 +1847,11 @@ function sessionReflectionDone(s){
 function rAllSess() {
   const list=g('asl'); if(!list) return;
   fillSessionClientFilter();
+  fillSessionTypeFilter();
   const clientId=g('sessions-client-filter')?.value||'';
+  const typeFilter=g('sessions-type-filter')?.value||'';
   const dateFilter=g('sessions-date-filter')?.value||'';
-  const filtered=sessions.filter(s=>(!clientId||s.clientId===clientId)&&(!dateFilter||getSessionDateKey(s)===dateFilter));
+  const filtered=sessions.filter(s=>(!clientId||s.clientId===clientId)&&(!typeFilter||(s.type||'consultation')===typeFilter)&&(!dateFilter||getSessionDateKey(s)===dateFilter));
   const sorted=[...filtered].sort((a,b)=>{
     const da=a.date?.toDate?a.date.toDate():new Date(a.date||0);
     const db2=b.date?.toDate?b.date.toDate():new Date(b.date||0);
@@ -1811,6 +1889,7 @@ function rAllSess() {
 function applySessionFilters(){ rAllSess(); }
 function resetSessionFilters(){
   const c=g('sessions-client-filter'); if(c)c.value='';
+  const t=g('sessions-type-filter'); if(t)t.value='';
   const d=g('sessions-date-filter'); if(d)d.value='';
   rAllSess();
 }
@@ -2582,24 +2661,26 @@ function loadClientBookings(uid) {
     });
 }
 
-// Load booking requests for specialist
+// Load specialist bookings (pending + confirmed, also feeds the dashboard)
 function loadSpecialistBookings(specialistUid) {
-  db.collection('bookings').where('specialistUid','==',specialistUid)
-    .where('status','==','pending')
+  if(unsubBookings){unsubBookings();unsubBookings=null;}
+  unsubBookings=db.collection('bookings').where('specialistUid','==',specialistUid)
     .onSnapshot(snap=>{
-      const bookings=snap.docs.map(d=>({id:d.id,...d.data()}));
-      window._currentBookings=(window._currentBookings||[]).filter(b=>b.status!=='pending').concat(bookings);
+      const allBookings=snap.docs.map(d=>({id:d.id,...d.data()}));
+      window._currentBookings=allBookings;
+      window._dashboardBookings=allBookings;
+      renderDashboardMeetings(allBookings);
+      const bookings=allBookings.filter(b=>b.status==='pending');
       const section=g('booking-requests-section');
       const list=g('booking-requests-list');
       if(!section||!list) return;
       if(bookings.length) {
         section.style.display='block';
         list.innerHTML=bookings.map(b=>{
-          const tl={consultation:'Консультация',diagnostic:'Диагностика'};
           return`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh);border-left:3px solid #ff8f00">
-            <div style="font-size:13px;font-weight:600;margin-bottom:4px">${b.clientName||'Клиент'}</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHTML(meetingTypeLabel(b.type,b.typeName))} · ${new Date(bookingDateKey(b)+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${b.time}</div>
-            ${b.comment?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-style:italic">"${b.comment}"</div>`:''}
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">${escHTML(b.clientName||'Клиент')}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHTML(meetingTypeLabel(b.type,b.typeName))} · ${new Date(bookingDateKey(b)+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} в ${escHTML(b.time||'—')}</div>
+            ${b.comment?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-style:italic">“${escHTML(b.comment)}”</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px">
             <button onclick="window.openConfirmBooking('${b.id}')" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✓ Подтвердить</button>
             <button onclick="window.rejectBookingDirect('${b.id}')" style="padding:8px 12px;border-radius:8px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">✗</button>
@@ -2608,6 +2689,7 @@ function loadSpecialistBookings(specialistUid) {
         }).join('');
       } else {
         section.style.display='none';
+        list.innerHTML='';
       }
     });
 }
@@ -2913,8 +2995,9 @@ function renderCalendar() {
       const booking=calBookings.find(b=>bookingCoversMoment(b,dk,hour));
       const isBookingStart=booking&&bookingDateKey(booking)===dk&&(booking.time||'')===hour;
       let bg,cursor,label2;
-      if(isPast) { bg='#f5f5f5';cursor='default';label2=''; }
-      else if(booking) { bg='#e8f5e9';cursor='pointer';label2=isBookingStart?`✓<div style="font-size:9px;margin-top:1px">${bookingDurationMinutes(booking)}м</div>`:'•'; }
+      // Confirmed meetings stay visible even after the day has passed.
+      if(booking) { bg=isPast?'#edf2ed':'#e8f5e9';cursor='pointer';label2=isBookingStart?`✓<div style="font-size:9px;margin-top:1px">${bookingDurationMinutes(booking)}м</div>`:'•'; }
+      else if(isPast) { bg='#f5f5f5';cursor='default';label2=''; }
       else if(slotStatus==='open') { bg='var(--accent2)';cursor='pointer';label2=''; }
       else { bg='var(--bg)';cursor='pointer';label2=''; }
       const onclick=(!isPast&&!booking)?`onclick="window.toggleSlot('${dk}','${hour}')"`:(booking?`onclick="window.editBookingFromCal('${booking.id}')"`:'');
