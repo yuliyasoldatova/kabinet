@@ -563,9 +563,10 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <div class="mo" id="m-ns">
   <div class="modal">
     <div class="mh"></div><div class="mt">Новая сессия</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      <div style="flex:1"><label class="fl2">Дата</label><input class="finp" id="nsd" type="date" style="width:100%"></div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:130px"><label class="fl2">Дата</label><input class="finp" id="nsd" type="date" style="width:100%"></div>
       <div style="width:100px"><label class="fl2">Время</label><input class="finp" id="nstm" type="time" step="900" value="10:00"></div>
+      <div style="width:120px"><label class="fl2">Длительность</label><input class="finp" id="nsdur" type="number" min="15" max="480" step="15" value="60" inputmode="numeric"><div style="font-size:10px;color:var(--text2);margin-top:3px;text-align:right">минут</div></div>
     </div>
     <div class="ff"><label class="fl2">Тип</label><select class="fsel" id="nst"><option value="consultation">Консультация</option><option value="diagnostic">Диагностика</option></select>
       <button type="button" onclick="window.quickAddMeetingType()" style="margin-top:7px;border:none;background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0">＋ Добавить свой тип встречи</button></div>
@@ -745,6 +746,10 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div class="ff">
       <label class="fl2">Подтверждённое время</label>
       <input class="finp" id="confirm-time" type="time" step="900" value="10:00">
+    </div>
+    <div class="ff">
+      <label class="fl2">Длительность встречи, минут</label>
+      <input class="finp" id="confirm-duration" type="number" min="15" max="480" step="15" value="60" inputmode="numeric">
     </div>
     <input type="hidden" id="confirm-book-id">
     <button class="bf" style="width:100%" onclick="window.confirmBooking()">✓ Подтвердить</button>
@@ -1267,12 +1272,12 @@ async function ensureManualSessionBookings(){
         batch.update(db.collection('bookings').doc(same.id),{sessionId:s.id});
         same.sessionId=s.id; changed=true; continue;
       }
-      const occupied=existing.some(b=>b.status==='confirmed'&&b.date===s.sessionDate&&(b.time||'')===s.sessionTime);
+      const occupied=existing.some(b=>b.status==='confirmed'&&meetingIntervalsOverlap(meetingInterval(s.sessionDate,s.sessionTime,sessionDurationMinutes(s)),meetingInterval(bookingDateKey(b),b.time||'00:00',bookingDurationMinutes(b))));
       if(occupied) continue;
       const bRef=db.collection('bookings').doc();
-      batch.set(bRef,manualBookingData(cl,s.sessionDate,s.sessionTime,s.type||'consultation',meetingTypeLabel(s.type||'consultation',s.typeName||''),s.id,s.request||''));
+      batch.set(bRef,manualBookingData(cl,s.sessionDate,s.sessionTime,sessionDurationMinutes(s),s.type||'consultation',meetingTypeLabel(s.type||'consultation',s.typeName||''),s.id,s.request||''));
       batch.update(db.collection('sessions').doc(s.id),{bookingId:bRef.id,source:s.source||'specialist'});
-      existing.push({id:bRef.id,date:s.sessionDate,time:s.sessionTime,status:'confirmed',sessionId:s.id,clientDocId:s.clientId,clientUid:s.clientUid});
+      existing.push({id:bRef.id,date:s.sessionDate,time:s.sessionTime,durationMinutes:sessionDurationMinutes(s),status:'confirmed',sessionId:s.id,clientDocId:s.clientId,clientUid:s.clientUid});
       changed=true;
     }
     if(changed) await batch.commit();
@@ -1573,6 +1578,7 @@ function scHTML(s) {
 function resetNewSessionForm(){
   ['nsd','nsr','nsgoal','nsi','nstake','nsactions','nscomment','nsprivate','nspay'].forEach(id=>{const e=g(id);if(e)e.value='';});
   const tm=g('nstm'); if(tm) tm.value='10:00';
+  const dur=g('nsdur'); if(dur) dur.value=String(DEFAULT_MEETING_DURATION);
 }
 
 function openNewSess(){
@@ -1585,22 +1591,73 @@ function openNewSess(){
   openM('m-ns');
 }
 
-async function findScheduleConflict(date,time,excludeBookingId='',excludeSessionId='') {
+const DEFAULT_MEETING_DURATION=60;
+function normalizeDurationMinutes(value){
+  const n=parseInt(value,10);
+  if(!Number.isFinite(n)||n<=0) return DEFAULT_MEETING_DURATION;
+  return Math.max(15,Math.min(480,Math.round(n/15)*15));
+}
+function meetingDurationLabel(value){
+  const n=normalizeDurationMinutes(value);
+  if(n===60) return '1 час';
+  if(n%60===0) return `${n/60} ч`;
+  if(n>60) return `${Math.floor(n/60)} ч ${n%60} мин`;
+  return `${n} мин`;
+}
+function meetingInterval(date,time,durationMinutes=DEFAULT_MEETING_DURATION){
+  if(!date||!time) return null;
+  const start=new Date(`${date}T${time}`);
+  if(Number.isNaN(start.getTime())) return null;
+  const duration=normalizeDurationMinutes(durationMinutes);
+  return {start:start.getTime(),end:start.getTime()+duration*60000};
+}
+function meetingIntervalsOverlap(a,b){return !!(a&&b&&a.start<b.end&&b.start<a.end);}
+function bookingDurationMinutes(b){return normalizeDurationMinutes(b?.durationMinutes);}
+function sessionDurationMinutes(s){return normalizeDurationMinutes(s?.durationMinutes);}
+function bookingEndDateTime(b){
+  const start=bookingDateTime(b);
+  return new Date(start.getTime()+bookingDurationMinutes(b)*60000);
+}
+function bookingCoversMoment(b,date,time){
+  if(b?.status!=='confirmed') return false;
+  const point=meetingInterval(date,time,15);
+  const interval=meetingInterval(bookingDateKey(b),b.time||'00:00',bookingDurationMinutes(b));
+  return !!(point&&interval&&point.start>=interval.start&&point.start<interval.end);
+}
+function hasBookingOverlap(bookings,date,time,durationMinutes=DEFAULT_MEETING_DURATION,excludeBookingId=''){
+  const candidate=meetingInterval(date,time,durationMinutes);
+  if(!candidate) return false;
+  return (bookings||[]).some(b=>b&&b.id!==excludeBookingId&&b.status==='confirmed'&&meetingIntervalsOverlap(candidate,meetingInterval(bookingDateKey(b),b.time||'00:00',bookingDurationMinutes(b))));
+}
+function timeToMinutes(time){
+  const m=/^(\d{1,2}):(\d{2})$/.exec(time||'');
+  return m?Number(m[1])*60+Number(m[2]):null;
+}
+function minutesToTime(minutes){
+  const m=((minutes%1440)+1440)%1440;
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+
+async function findScheduleConflict(date,time,durationMinutes=DEFAULT_MEETING_DURATION,excludeBookingId='',excludeSessionId='') {
   if(!date||!time||!CU?.uid) return null;
-  // A working session with the same slot also counts as occupied.
-  const localSession=sessions.find(s=>s.id!==excludeSessionId && getSessionDateKey(s)===date && (s.sessionTime||'')===time);
+  const candidate=meetingInterval(date,time,durationMinutes);
+  if(!candidate) return null;
+  const localSession=sessions.find(sess=>{
+    if(sess.id===excludeSessionId) return false;
+    return meetingIntervalsOverlap(candidate,meetingInterval(getSessionDateKey(sess),sess.sessionTime||'00:00',sessionDurationMinutes(sess)));
+  });
   if(localSession) return {kind:'session',id:localSession.id};
   const snap=await db.collection('bookings').where('specialistUid','==',CU.uid).where('status','==','confirmed').get();
   const hit=snap.docs.find(d=>{
     if(d.id===excludeBookingId) return false;
-    const b=d.data();
-    if(excludeSessionId && b.sessionId===excludeSessionId) return false;
-    return bookingDateKey({id:d.id,...b})===date && (b.time||'')===time;
+    const b={id:d.id,...d.data()};
+    if(excludeSessionId&&b.sessionId===excludeSessionId) return false;
+    return meetingIntervalsOverlap(candidate,meetingInterval(bookingDateKey(b),b.time||'00:00',bookingDurationMinutes(b)));
   });
   return hit?{kind:'booking',id:hit.id,data:hit.data()}:null;
 }
 
-function manualBookingData(cl,date,time,type,typeName,sessionId,request='') {
+function manualBookingData(cl,date,time,durationMinutes,type,typeName,sessionId,request='') {
   return {
     clientUid:cl?.clientUid||null,
     clientDocId:cl?.id||null,
@@ -1608,7 +1665,7 @@ function manualBookingData(cl,date,time,type,typeName,sessionId,request='') {
     clientEmail:cl?.email||'',
     clientContact:cl?.contacts||'',
     specialistUid:CU.uid,
-    date,time,type,typeName,
+    date,time,durationMinutes:normalizeDurationMinutes(durationMinutes),type,typeName,
     calendarDateMode:CALENDAR_DATE_MODE,
     comment:request||'',
     status:'confirmed',
@@ -1624,12 +1681,13 @@ async function saveNS() {
   const cl=clients.find(c=>c.id===CID);
   const sessDate=g('nsd')?.value||'';
   const sessTime=g('nstm')?.value||'10:00';
+  const durationMinutes=normalizeDurationMinutes(g('nsdur')?.value);
   if(!sessDate){toast('Укажите дату сессии');return;}
   const sessType=g('nst')?.value||'consultation';
   const typeName=meetingTypeLabel(sessType);
   try {
-    const conflict=await findScheduleConflict(sessDate,sessTime);
-    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const conflict=await findScheduleConflict(sessDate,sessTime,durationMinutes);
+    if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
     const dateVal=firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime));
     const takeaway=g('nstake')?.value||'';
     const nextActions=g('nsactions')?.value||'';
@@ -1638,7 +1696,7 @@ async function saveNS() {
     const data={
       bookingId:bookingRef.id,
       clientId:CID, clientUid:cl?.clientUid||null, specialistId:CU.uid,
-      date:dateVal, sessionDate:sessDate, sessionTime:sessTime,
+      date:dateVal, sessionDate:sessDate, sessionTime:sessTime, durationMinutes,
       type:sessType, typeName,
       request:g('nsr')?.value||'',
       desiredResult:g('nsgoal')?.value||'',
@@ -1651,7 +1709,7 @@ async function saveNS() {
       source:'specialist',
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     };
-    const bookingData=manualBookingData(cl,sessDate,sessTime,sessType,typeName,sessionRef.id,data.request);
+    const bookingData=manualBookingData(cl,sessDate,sessTime,durationMinutes,sessType,typeName,sessionRef.id,data.request);
     const batch=db.batch();
     batch.set(sessionRef,data);
     batch.set(bookingRef,bookingData);
@@ -1820,7 +1878,7 @@ function openSD(sid) {
 
   sdc.innerHTML=`
     <div style="margin-bottom:18px">
-      <div style="font-size:12px;color:var(--text2)">${dateStr(s.date,s.sessionTime)}</div>
+      <div style="font-size:12px;color:var(--text2)">${dateStr(s.date,s.sessionTime)} · ${meetingDurationLabel(s.durationMinutes)}</div>
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px;line-height:1.15">${escHTML(meetingTypeLabel(s.type,s.typeName))}</div>
       ${cl&&isSpec?`<div style="font-size:13px;color:var(--text2);margin-top:4px">${escHTML(cl.fullName||'')}</div>`:''}
       <div id="session-save-status" style="font-size:11px;color:#2e7d32;margin-top:8px">Сохранено ✓</div>
@@ -1837,7 +1895,7 @@ function openSD(sid) {
     ${isSpec?sessionTextarea(s.id,'🔒 Только для специалиста','privateNote',privateNote,true,true,'Ваши приватные записи. Клиент это поле не увидит.') : ''}
     ${isSpec?`<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">Оплата, ₸</div><input data-session-id="${escHTML(s.id)}" data-field="payment" oninput="window.sessionFieldChanged(this)" type="number" min="0" value="${escHTML(s.payment||'')}" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;background:#fff"></div>`:''}
     ${cardsHTML}
-    ${isSpec?`<div style="display:flex;gap:10px;margin-top:18px"><button onclick="window.editSession('${escHTML(s.id)}')" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">Изменить дату / тип</button><button onclick="window.deleteSession('${escHTML(s.id)}')" style="padding:11px 15px;border-radius:10px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">🗑 Удалить</button></div>`:''}
+    ${isSpec?`<div style="display:flex;gap:10px;margin-top:18px"><button onclick="window.editSession('${escHTML(s.id)}')" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">Изменить параметры</button><button onclick="window.deleteSession('${escHTML(s.id)}')" style="padding:11px 15px;border-radius:10px;border:1px solid #e63946;background:transparent;color:#e63946;font-family:'Nunito',sans-serif;font-size:13px;cursor:pointer">🗑 Удалить</button></div>`:''}
   `;
 }
 
@@ -1847,6 +1905,7 @@ function editSession(sid) {
   const nst=g('nst');if(nst)nst.value=s.type||'consultation';
   const nsd=g('nsd');if(nsd)nsd.value=s.sessionDate||(s.date?.toDate?dateKey(s.date.toDate()):'');
   const nstm=g('nstm');if(nstm)nstm.value=s.sessionTime||'10:00';
+  const nsdur=g('nsdur');if(nsdur)nsdur.value=String(sessionDurationMinutes(s));
   const nsr=g('nsr');if(nsr)nsr.value=s.request||'';
   const ng=g('nsgoal');if(ng)ng.value=s.desiredResult||'';
   const nsi=g('nsi');if(nsi)nsi.value=s.insights||'';
@@ -1894,6 +1953,7 @@ async function updateSession(sid) {
   if(!current){toast('Сессия не найдена');return;}
   const sessDate=g('nsd')?.value||'';
   const sessTime=g('nstm')?.value||'10:00';
+  const durationMinutes=normalizeDurationMinutes(g('nsdur')?.value);
   if(!sessDate){toast('Укажите дату сессии');return;}
   const updateType=g('nst')?.value||'consultation';
   const typeName=meetingTypeLabel(updateType);
@@ -1904,13 +1964,13 @@ async function updateSession(sid) {
     request:g('nsr')?.value||'',desiredResult:g('nsgoal')?.value||'',insights:g('nsi')?.value||'',
     takeaway,summary:takeaway,nextActions,actions:nextActions,
     specialistComment:g('nscomment')?.value||'',privateNote:g('nsprivate')?.value||'',payment:g('nspay')?.value||'',
-    sessionDate:sessDate,sessionTime:sessTime,
+    sessionDate:sessDate,sessionTime:sessTime,durationMinutes,
     date:firebase.firestore.Timestamp.fromDate(new Date(sessDate+'T'+sessTime)),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
-    const conflict=await findScheduleConflict(sessDate,sessTime,current.bookingId||'',sid);
-    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const conflict=await findScheduleConflict(sessDate,sessTime,durationMinutes,current.bookingId||'',sid);
+    if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
     const cl=clients.find(c=>c.id===current.clientId);
     const batch=db.batch();
     const sRef=db.collection('sessions').doc(sid);
@@ -1923,10 +1983,11 @@ async function updateSession(sid) {
     if(!bookingId||!bExists){
       bRef=db.collection('bookings').doc(); bookingId=bRef.id;
       updateData.bookingId=bookingId;
-      batch.set(bRef,manualBookingData(cl,sessDate,sessTime,updateType,typeName,sid,updateData.request));
+      batch.set(bRef,manualBookingData(cl,sessDate,sessTime,durationMinutes,updateType,typeName,sid,updateData.request));
     } else {
       batch.update(bRef,{
-        date:sessDate,time:sessTime,type:updateType,typeName,
+        date:sessDate,time:sessTime,durationMinutes,type:updateType,typeName,
+        calendarDateMode:CALENDAR_DATE_MODE,
         comment:updateData.request||'',clientDocId:current.clientId||cl?.id||null,
         clientUid:current.clientUid||cl?.clientUid||null,clientName:cl?.fullName||'Клиент',
         sessionId:sid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -2312,7 +2373,7 @@ async function sendBooking() {
       clientName:CU.name,
       clientDocId:CU.clientDocId||null,
       specialistUid:CU.specialistUid||null,
-      date,time,type,typeName:meetingTypeLabel(type),comment,
+      date,time,durationMinutes:DEFAULT_MEETING_DURATION,type,typeName:meetingTypeLabel(type),comment,
       calendarDateMode:CALENDAR_DATE_MODE,
       status:'pending', // pending | confirmed | rejected
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -2327,7 +2388,7 @@ async function sendBooking() {
 function showUpcomingMeeting(bookings, isClient) {
   const now=new Date();
   const upcoming=bookings
-    .filter(b=>b.status==='confirmed' && bookingDateTime(b)>now)
+    .filter(b=>b.status==='confirmed' && bookingEndDateTime(b)>now)
     .sort((a,b)=>bookingDateTime(a)-bookingDateTime(b));
   const pending=bookings.filter(b=>b.status==='pending');
   const rejected=bookings.filter(b=>b.status==='rejected');
@@ -2344,7 +2405,7 @@ function showUpcomingMeeting(bookings, isClient) {
         html+=`<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:var(--r);padding:20px;color:#fff;margin-bottom:12px">
           <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">✓ Встреча подтверждена</div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:4px;text-transform:capitalize">${dtStr}</div>
-          <div style="font-size:13px;opacity:.8;margin-bottom:${m.meetLink?'14px':'4px'}">${escHTML(meetingTypeLabel(m.type,m.typeName))}</div>
+          <div style="font-size:13px;opacity:.8;margin-bottom:${m.meetLink?'14px':'4px'}">${escHTML(meetingTypeLabel(m.type,m.typeName))} · ${meetingDurationLabel(m.durationMinutes)}</div>
           ${m.meetLink?`<a href="${m.meetLink}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);color:#fff;padding:10px 18px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;text-decoration:none">🎥 Подключиться к встрече</a>`:'<div style="font-size:12px;opacity:.5;margin-top:4px">Ссылка появится после подтверждения специалиста</div>'}
         </div>`;
       });
@@ -2374,7 +2435,7 @@ function showClientUpcomingMeeting(bookings) {
   // Show in specialist profile for this client
   const el=g('client-upcoming-meeting'); if(!el) return;
   const now=new Date();
-  const upcoming=bookings.filter(b=>b.status==='confirmed'&&bookingDateTime(b)>now)
+  const upcoming=bookings.filter(b=>b.status==='confirmed'&&bookingEndDateTime(b)>now)
     .sort((a,b)=>bookingDateTime(a)-bookingDateTime(b));
   const pending=bookings.filter(b=>b.status==='pending');
   if(upcoming.length) {
@@ -2383,7 +2444,7 @@ function showClientUpcomingMeeting(bookings) {
     el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
       <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
       <div style="font-size:14px;font-weight:600">${new Date(bookingDateKey(m)+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
-      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
+      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))} · ${meetingDurationLabel(m.durationMinutes)}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
     </div>`;
   } else if(pending.length) {
     const p=pending[0];
@@ -2409,11 +2470,13 @@ function openConfirmBooking(bookingId) {
     <div style="display:flex;flex-direction:column;gap:4px">
       <div><b>Клиент:</b> ${booking.clientName||'—'}</div>
       <div><b>Тип:</b> ${escHTML(meetingTypeLabel(booking.type,booking.typeName))}</div>
+      <div><b>Длительность:</b> ${meetingDurationLabel(booking.durationMinutes)}</div>
       ${booking.comment?`<div><b>Запрос:</b> ${booking.comment}</div>`:''}
       ${booking.clientContact?`<div><b>Контакт:</b> ${booking.clientContact}</div>`:''}
     </div>`;
   const cdate=g('confirm-date'); if(cdate) cdate.value=bookingDateKey(booking)||'';
   const ctime=g('confirm-time'); if(ctime) ctime.value=booking.time||'10:00';
+  const cdur=g('confirm-duration'); if(cdur) cdur.value=String(bookingDurationMinutes(booking));
   const clink=g('confirm-meet-link'); if(clink) clink.value=booking.meetLink||'';
   const cid=g('confirm-book-id'); if(cid) cid.value=bookingId;
   openM('m-confirm-book');
@@ -2423,6 +2486,7 @@ async function confirmBooking() {
   const id=g('confirm-book-id')?.value; if(!id) return;
   const date=g('confirm-date')?.value;
   const time=g('confirm-time')?.value||'10:00';
+  const durationMinutes=normalizeDurationMinutes(g('confirm-duration')?.value);
   const meetLink=g('confirm-meet-link')?.value||'';
   if(!date){toast('Укажите дату');return;}
   try {
@@ -2430,17 +2494,17 @@ async function confirmBooking() {
     if(!booking){const snap=await db.collection('bookings').doc(id).get(); if(snap.exists) booking={id:snap.id,...snap.data()};}
     if(!booking){toast('Встреча не найдена');return;}
     const linked=sessions.find(s=>s.bookingId===id)||(booking.sessionId?sessions.find(s=>s.id===booking.sessionId):null);
-    const conflict=await findScheduleConflict(date,time,id,linked?.id||booking.sessionId||'');
-    if(conflict){toast('Это время уже занято другой встречей');return;}
+    const conflict=await findScheduleConflict(date,time,durationMinutes,id,linked?.id||booking.sessionId||'');
+    if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
     const batch=db.batch();
     batch.update(db.collection('bookings').doc(id),{
-      status:'confirmed', date, time, meetLink, calendarDateMode:CALENDAR_DATE_MODE,
+      status:'confirmed',date,time,durationMinutes,meetLink,calendarDateMode:CALENDAR_DATE_MODE,
       confirmedAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     if(linked||booking.sessionId){
       const sid=linked?.id||booking.sessionId;
       const sUpdate={
-        sessionDate:date,sessionTime:time,
+        sessionDate:date,sessionTime:time,durationMinutes,
         date:firebase.firestore.Timestamp.fromDate(new Date(date+'T'+time)),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -2448,8 +2512,10 @@ async function confirmBooking() {
       if(linked) Object.assign(linked,sUpdate);
     }
     await batch.commit();
-    const local=(window._currentBookings||[]).find(b=>b.id===id); if(local){local.status='confirmed';local.date=date;local.time=time;local.meetLink=meetLink;local.calendarDateMode=CALENDAR_DATE_MODE;}
-    const cal=calBookings.find(b=>b.id===id); if(cal){cal.status='confirmed';cal.date=date;cal.time=time;cal.meetLink=meetLink;cal.calendarDateMode=CALENDAR_DATE_MODE;}
+    const local=(window._currentBookings||[]).find(b=>b.id===id);
+    if(local){Object.assign(local,{status:'confirmed',date,time,durationMinutes,meetLink,calendarDateMode:CALENDAR_DATE_MODE});}
+    const cal=calBookings.find(b=>b.id===id);
+    if(cal){Object.assign(cal,{status:'confirmed',date,time,durationMinutes,meetLink,calendarDateMode:CALENDAR_DATE_MODE});}
     closeM('m-confirm-book');
     if(document.querySelector('.screen.active')?.id==='s-calendar'){renderCalendar();renderSpecialistMeetings();}
     toast('Встреча и связанная сессия обновлены ✦');
@@ -2538,7 +2604,7 @@ function loadClientBookingsForProfile(clientUid) {
 let pubCalOffset = 0;
 let pubSlots = {};
 let pubScheduleMode = 'legacy-utc';
-let pubBookings = {};
+let pubBookings = [];
 let pubSelectedDate = null;
 let pubSelectedHour = null;
 const SPECIALIST_UID_KEY = 'specialistUid'; // will be loaded dynamically
@@ -2569,8 +2635,7 @@ async function loadPublicSlots() {
 
     // Load confirmed bookings to mark busy
     const bSnap = await db.collection('bookings').where('specialistUid','==',specUid).where('status','==','confirmed').get();
-    pubBookings = {};
-    bSnap.docs.forEach(d=>{const b={id:d.id,...d.data()};const dk=bookingDateKey(b);if(!pubBookings[dk])pubBookings[dk]={};pubBookings[dk][b.time]=true;});
+    pubBookings=bSnap.docs.map(d=>({id:d.id,...d.data()}));
 
     renderPublicSlots();
   } catch(e){
@@ -2593,7 +2658,7 @@ function renderPublicSlots() {
     const dk=dateKey(d);
     if(d<now&&dateKey(d)!==dateKey(now)) return false;
     const daySlots=slotMapForVisualDate(pubSlots,d,pubScheduleMode);
-    return Object.keys(daySlots).some(h=>daySlots[h]==='open'&&!pubBookings[dk]?.[h]);
+    return Object.keys(daySlots).some(h=>daySlots[h]==='open'&&!hasBookingOverlap(pubBookings,dk,h,DEFAULT_MEETING_DURATION));
   });
 
   if(availDays.length===0){
@@ -2611,7 +2676,7 @@ function renderPublicSlots() {
     const dayLabel = d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
     const daySlots=slotMapForVisualDate(pubSlots,d,pubScheduleMode);
     const availHours = Object.keys(daySlots||{})
-      .filter(h=>daySlots[h]==='open'&&!pubBookings[dk]?.[h])
+      .filter(h=>daySlots[h]==='open'&&!hasBookingOverlap(pubBookings,dk,h,DEFAULT_MEETING_DURATION))
       .sort((a,b)=>a.localeCompare(b));
     if(!availHours.length) return;
     html += `<div style="margin-bottom:20px;background:var(--surface);border-radius:var(--r);padding:16px;box-shadow:var(--sh)">
@@ -2659,6 +2724,7 @@ async function sendPublicBooking() {
       specialistUid:window._pubSpecUid||null,
       date:pubSelectedDate,
       time:pubSelectedHour,
+      durationMinutes:DEFAULT_MEETING_DURATION,
       calendarDateMode:CALENDAR_DATE_MODE,
       type:g('pub-type')?.value||'consultation',
       typeName:meetingTypeLabel(g('pub-type')?.value||'consultation'),
@@ -2757,7 +2823,12 @@ function calendarTimesForWeek(dates){
   const times=new Set(HOURS);
   const weekKeys=new Set(dates.map(dateKey));
   calBookings.forEach(b=>{
-    if(b?.time && weekKeys.has(bookingDateKey(b))) times.add(b.time);
+    const dk=bookingDateKey(b);
+    if(!b?.time||!weekKeys.has(dk)) return;
+    const start=timeToMinutes(b.time);
+    if(start===null){times.add(b.time);return;}
+    const duration=bookingDurationMinutes(b);
+    for(let minute=start;minute<Math.min(1440,start+duration);minute+=15) times.add(minutesToTime(minute));
   });
   dates.forEach(d=>Object.keys(slotMapForVisualDate(calSlots,d,calScheduleMode)||{}).forEach(t=>times.add(t)));
   return [...times].filter(Boolean).sort((a,b)=>a.localeCompare(b));
@@ -2813,14 +2884,15 @@ function renderCalendar() {
       const dk = dateKey(d);
       const isPast = d < now && !(dateKey(d)===dateKey(now));
       const slotStatus = slotMapForVisualDate(calSlots,d,calScheduleMode)?.[hour];
-      // Check if booked
-      const booking = calBookings.find(b=>bookingDateKey(b)===dk&&b.time===hour&&b.status==='confirmed');
-      let bg, cursor, label2;
-      if(isPast) { bg='#f5f5f5'; cursor='default'; label2=''; }
-      else if(booking) { bg='#e8f5e9'; cursor='default'; label2='✓'; }
-      else if(slotStatus==='open') { bg='var(--accent2)'; cursor='pointer'; label2=''; }
-      else { bg='var(--bg)'; cursor='pointer'; label2=''; }
-      const onclick = (!isPast&&!booking) ? `onclick="window.toggleSlot('${dk}','${hour}')"` : (booking?`onclick="window.editBookingFromCal('${booking.id}')"`:'');
+      // A confirmed meeting occupies its full duration.
+      const booking=calBookings.find(b=>bookingCoversMoment(b,dk,hour));
+      const isBookingStart=booking&&bookingDateKey(booking)===dk&&(booking.time||'')===hour;
+      let bg,cursor,label2;
+      if(isPast) { bg='#f5f5f5';cursor='default';label2=''; }
+      else if(booking) { bg='#e8f5e9';cursor='pointer';label2=isBookingStart?`✓<div style="font-size:9px;margin-top:1px">${bookingDurationMinutes(booking)}м</div>`:'•'; }
+      else if(slotStatus==='open') { bg='var(--accent2)';cursor='pointer';label2=''; }
+      else { bg='var(--bg)';cursor='pointer';label2=''; }
+      const onclick=(!isPast&&!booking)?`onclick="window.toggleSlot('${dk}','${hour}')"`:(booking?`onclick="window.editBookingFromCal('${booking.id}')"`:'');
       html += `<td ${onclick} style="background:${bg};cursor:${cursor};border:1px solid var(--border);border-radius:4px;height:36px;text-align:center;font-size:11px;color:#2e7d32">${label2}</td>`;
     });
     html += '</tr>';
@@ -2851,11 +2923,11 @@ function calNextWeek() { calWeekOffset++; renderCalendar(); }
 function renderSpecialistMeetings() {
   const now = new Date();
   const tl={consultation:'Консультация',diagnostic:'Диагностика'};
-  const upcoming = calBookings.filter(b=>b.status==='confirmed'&&bookingDateTime(b)>now)
+  const upcoming = calBookings.filter(b=>b.status==='confirmed'&&bookingEndDateTime(b)>now)
     .sort((a,x)=>bookingDateTime(a)-bookingDateTime(x));
   const pending2 = calBookings.filter(b=>b.status==='pending')
     .sort((a,x)=>bookingDateTime(a)-bookingDateTime(x));
-  const past = calBookings.filter(b=>b.status==='confirmed'&&bookingDateTime(b)<=now)
+  const past = calBookings.filter(b=>b.status==='confirmed'&&bookingEndDateTime(b)<=now)
     .sort((a,x)=>bookingDateTime(x)-bookingDateTime(a));
 
   const ul=g('spec-upcoming-list');
@@ -2914,8 +2986,7 @@ async function openBookingWithSlots() {
     const scheduleMode=clientSchedData.calendarDateMode||'legacy-utc';
     // Load existing bookings to mark busy slots
     const bSnap = await db.collection('bookings').where('specialistUid','==',CU.specialistUid).where('status','==','confirmed').get();
-    const bookedSlots = {};
-    bSnap.docs.forEach(d=>{const b={id:d.id,...d.data()};const dk=bookingDateKey(b);if(!bookedSlots[dk])bookedSlots[dk]={};bookedSlots[dk][b.time]=true;});
+    const confirmedBookings=bSnap.docs.map(d=>({id:d.id,...d.data()}));
     
     // Build available slots from the visual local calendar, with fallback for legacy UTC-keyed schedule days.
     const now = new Date();
@@ -2927,7 +2998,7 @@ async function openBookingWithSlots() {
       Object.keys(daySlots).sort().forEach(hour=>{
         const dt=new Date(dateStr+'T'+hour);
         if(dt<now) return;
-        if(daySlots[hour]==='open'&&!bookedSlots[dateStr]?.[hour]) available.push({date:dateStr,hour});
+        if(daySlots[hour]==='open'&&!hasBookingOverlap(confirmedBookings,dateStr,hour,DEFAULT_MEETING_DURATION)) available.push({date:dateStr,hour});
       });
     }
     showBookingSlots(available);
@@ -3069,12 +3140,14 @@ async function startSessionFromBooking(bookingId){
       clients.push({id:clientId,fullName:booking.clientName||'Клиент',email:booking.clientEmail||'',contacts:booking.clientContact||'',specialistId:CU.uid,clientUid,status:'active'});
       await db.collection('bookings').doc(bookingId).update({clientDocId:clientId});
     }
-    const dateVal=firebase.firestore.Timestamp.fromDate(new Date(booking.date+'T'+(booking.time||'10:00')));
+    const bookingDay=bookingDateKey(booking);
+    const durationMinutes=bookingDurationMinutes(booking);
+    const dateVal=firebase.firestore.Timestamp.fromDate(new Date(bookingDay+'T'+(booking.time||'10:00')));
     const data={
       bookingId,
       clientId,clientUid,
       specialistId:CU.uid,
-      date:dateVal,sessionDate:booking.date||'',sessionTime:booking.time||'',
+      date:dateVal,sessionDate:bookingDay||'',sessionTime:booking.time||'',durationMinutes,
       type:booking.type||'consultation',typeName:meetingTypeLabel(booking.type||'consultation',booking.typeName||''),
       request:'',desiredResult:'',insights:'',takeaway:'',summary:'',nextActions:'',actions:'',specialistComment:'',privateNote:'',payment:'',
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -3091,7 +3164,7 @@ async function startSessionFromBooking(bookingId){
 function showClientUpcomingMeeting(bookings) {
   const el=g('client-upcoming-meeting'); if(!el) return;
   const now=new Date();
-  const upcoming=bookings.filter(b=>b.status==='confirmed'&&bookingDateTime(b)>now)
+  const upcoming=bookings.filter(b=>b.status==='confirmed'&&bookingEndDateTime(b)>now)
     .sort((a,b)=>bookingDateTime(a)-bookingDateTime(b));
   const pending=bookings.filter(b=>b.status==='pending');
   if(upcoming.length) {
@@ -3100,7 +3173,7 @@ function showClientUpcomingMeeting(bookings) {
     el.innerHTML=`<div style="background:#e8f5e9;border-radius:12px;padding:14px;border-left:3px solid #2e7d32">
       <div style="font-size:11px;color:#2e7d32;font-weight:600;margin-bottom:4px">✓ Встреча подтверждена</div>
       <div style="font-size:14px;font-weight:600">${new Date(bookingDateKey(m)+'T'+m.time).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'})} в ${m.time}</div>
-      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
+      <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(m.type,m.typeName))} · ${meetingDurationLabel(m.durationMinutes)}${m.meetLink?' · <a href="'+m.meetLink+'" target="_blank">Ссылка Meet</a>':''}</div>
       <div style="display:flex;gap:8px;margin-top:10px"><button onclick="window.startSessionFromBooking('${m.id}')" style="flex:1;padding:9px 12px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;cursor:pointer">${linked?'Открыть сессию':'Начать сессию'}</button><button onclick="window.openConfirmBooking('${m.id}')" style="padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;cursor:pointer">Изм.</button></div>
     </div>`;
   } else if(pending.length) {
