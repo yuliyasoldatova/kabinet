@@ -191,9 +191,35 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .sessions-payment{white-space:nowrap;font-weight:700;color:var(--accent)}
 .sessions-open{border:none;background:transparent;color:var(--accent);font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
 @media(max-width:700px){.sessions-toolbar{grid-template-columns:1fr}.sessions-reset{width:100%}.sessions-table-wrap{border-radius:12px}}
+
+/* Dashboard agenda */
+.dash-day-group{margin-bottom:10px}
+.dash-meeting{background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:9px;box-shadow:var(--sh);border-left:3px solid #2e7d32}
+.dash-meeting.now{border-left-color:var(--gold);background:#fffaf0}
+.dash-meeting.past{border-left-color:var(--border);opacity:.62;box-shadow:none}
+.dash-status{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;margin-bottom:6px}
+.dash-status.upcoming{background:#e8f5e9;color:#2e7d32}
+.dash-status.now{background:#fff3cd;color:#8a6500}
+.dash-status.past{background:var(--surface2);color:var(--text2)}
+.dash-past-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin:14px 0 8px}
+/* Clients table */
+.clients-table-wrap{width:100%;overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh)}
+.clients-table{width:100%;min-width:760px;border-collapse:collapse;font-size:13px}
+.clients-table th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:700;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+.clients-table td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.clients-table tbody tr{cursor:pointer;transition:background .15s}
+.clients-table tbody tr:hover{background:#faf7f3}
+.clients-table tbody tr:last-child td{border-bottom:none}
+.clients-num{width:58px;color:var(--text2);font-weight:700}
+.clients-name{font-weight:700;min-width:180px}
+.clients-email{min-width:190px;word-break:break-all}
+.clients-contact{min-width:180px}
+.clients-count{text-align:center;font-weight:700;white-space:nowrap}
+
 </style>
 </head>
 <body>
+<!-- BUILD: DASHBOARD-CLIENT-TABLE-CALENDAR-DATE-FIX-2026-08-29 -->
 <!-- BUILD: SESSION-WORKSPACE-2026-08-26 -->
 <!-- BUILD: CLIENT-ROLE-AUTH-FIX-2026-08-26 -->
 
@@ -262,7 +288,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <div class="gsub" id="dd2"></div>
     <div class="stats">
       <div class="stat"><div class="stat-n" id="sc1">0</div><div class="stat-l">Клиентов</div></div>
-      <div class="stat"><div class="stat-n" id="ss1">0</div><div class="stat-l">Сессий</div></div>
+      <div class="stat"><div class="stat-n" id="ss1">0</div><div class="stat-l">Рабочих сессий</div></div>
     </div>
     <div id="booking-requests-section" style="display:none;margin-bottom:24px">
       <div class="sec-title" style="color:#e65100">📅 Запросы на встречу</div>
@@ -274,8 +300,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <div class="sec-title" style="margin-top:20px">Завтра</div>
       <div id="dash-tomorrow-meetings"></div>
     </div>
-    <div class="sec-title">Последние клиенты</div>
-    <div id="dcl"></div>
   </div>
 </div>
 
@@ -471,7 +495,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <div style="font-family:'Cormorant Garamond',serif;font-size:26px" id="ppn"></div>
       <div style="color:var(--text2);font-size:13px;margin-top:4px">Специалист · Проводник</div>
     </div>
-    <div class="stats"><div class="stat"><div class="stat-n" id="psc">0</div><div class="stat-l">Клиентов</div></div><div class="stat"><div class="stat-n" id="pss">0</div><div class="stat-l">Сессий</div></div></div>
+    <div class="stats"><div class="stat"><div class="stat-n" id="psc">0</div><div class="stat-l">Клиентов</div></div><div class="stat"><div class="stat-n" id="pss">0</div><div class="stat-l">Рабочих сессий</div></div></div>
     <div style="background:var(--surface);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);margin-bottom:16px">
       <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Email входа</div>
       <div id="pp-email" style="font-size:15px;font-weight:600;word-break:break-all">—</div>
@@ -1386,33 +1410,69 @@ function clientNumberMap(){
   clientsByRegistrationAsc().forEach((c,i)=>map.set(c.id,i+1));
   return map;
 }
-function dashboardMeetingHTML(b){
+function workingSessions(){
+  return sessions.filter(s=>s.type!=='diagnostic');
+}
+function workingSessionsForClient(clientId){
+  return sessions.filter(s=>s.clientId===clientId&&s.type!=='diagnostic');
+}
+function dashboardMeetingState(b,now=new Date()){
+  const start=bookingDateTime(b);
+  const end=bookingEndDateTime(b);
+  if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())) return 'upcoming';
+  if(now>=end) return 'past';
+  if(now>=start&&now<end) return 'now';
+  return 'upcoming';
+}
+function dashboardMeetingHTML(b,state){
   const cl=clients.find(c=>c.clientUid===b.clientUid)||clients.find(c=>c.id===b.clientDocId);
   const name=cl?.fullName||b.clientName||b.clientContact||'Клиент';
   const linked=sessions.find(s=>s.bookingId===b.id)||(b.sessionId?sessions.find(s=>s.id===b.sessionId):null);
   const start=b.time||'—';
   const dur=meetingDurationLabel(b.durationMinutes);
-  return `<div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:9px;box-shadow:var(--sh);border-left:3px solid #2e7d32">
+  const statusLabel=state==='past'?'✓ Прошла':state==='now'?'● Сейчас':'Предстоит';
+  const buttonLabel=state==='past'?(linked?'Открыть':'Заполнить'):(linked?'Открыть':'Начать');
+  return `<div class="dash-meeting ${state}">
+    <span class="dash-status ${state}">${statusLabel}</span>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
       <div style="min-width:0">
         <div style="font-size:12px;color:var(--text2);margin-bottom:3px">${escHTML(start)} · ${escHTML(dur)}</div>
         <div style="font-size:15px;font-weight:700;margin-bottom:3px">${escHTML(name)}</div>
         <div style="font-size:12px;color:var(--text2)">${escHTML(meetingTypeLabel(b.type,b.typeName))}</div>
       </div>
-      <button onclick="window.startSessionFromBooking('${escHTML(b.id)}')" style="flex-shrink:0;padding:8px 10px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer">${linked?'Открыть':'Начать'}</button>
+      <button onclick="window.startSessionFromBooking('${escHTML(b.id)}')" style="flex-shrink:0;padding:8px 10px;border-radius:9px;border:none;background:${state==='past'?'#8a8178':'var(--accent)'};color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer">${buttonLabel}</button>
     </div>
   </div>`;
 }
 function renderDashboardMeetings(bookings){
-  const today=dateKey(new Date());
+  const now=new Date();
+  const today=dateKey(now);
   const tomorrow=addDaysToDateKey(today,1);
   const confirmed=(bookings||[]).filter(b=>b.status==='confirmed');
-  const byDate=key=>confirmed.filter(b=>bookingDateKey(b)===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  const todayItems=byDate(today), tomorrowItems=byDate(tomorrow);
+  const byDate=key=>confirmed.filter(b=>bookingDateKey(b)===key);
+
+  const todayItems=byDate(today);
+  const active=todayItems.filter(b=>dashboardMeetingState(b,now)!=='past')
+    .sort((a,b)=>{
+      const sa=dashboardMeetingState(a,now), sb=dashboardMeetingState(b,now);
+      if(sa!==sb) return sa==='now'?-1:1;
+      return bookingDateTime(a)-bookingDateTime(b);
+    });
+  const past=todayItems.filter(b=>dashboardMeetingState(b,now)==='past')
+    .sort((a,b)=>bookingDateTime(b)-bookingDateTime(a));
+
   const td=g('dash-today-meetings');
-  if(td) td.innerHTML=todayItems.length?todayItems.map(dashboardMeetingHTML).join(''):'<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">Сегодня встреч нет</div>';
+  if(td){
+    let html='';
+    if(active.length) html+=active.map(b=>dashboardMeetingHTML(b,dashboardMeetingState(b,now))).join('');
+    else html+='<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">Больше встреч на сегодня нет</div>';
+    if(past.length) html+='<div class="dash-past-title">Уже прошли сегодня</div>'+past.map(b=>dashboardMeetingHTML(b,'past')).join('');
+    td.innerHTML=html;
+  }
+
+  const tomorrowItems=byDate(tomorrow).sort((a,b)=>bookingDateTime(a)-bookingDateTime(b));
   const tm=g('dash-tomorrow-meetings');
-  if(tm) tm.innerHTML=tomorrowItems.length?tomorrowItems.map(dashboardMeetingHTML).join(''):'<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">На завтра встреч нет</div>';
+  if(tm) tm.innerHTML=tomorrowItems.length?tomorrowItems.map(b=>dashboardMeetingHTML(b,'upcoming')).join(''):'<div style="font-size:13px;color:var(--text2);padding:4px 0 10px">На завтра встреч нет</div>';
 }
 function rDash() {
   const h=new Date().getHours();
@@ -1420,18 +1480,14 @@ function rDash() {
   const dg=g('dg'); if(dg) dg.textContent=gr+', '+(CU?.name||'');
   const dd=g('dd2'); if(dd) dd.textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   const sc=g('sc1'); if(sc) sc.textContent=clients.length;
-  const ss=g('ss1'); if(ss) ss.textContent=sessions.length;
+  const ss=g('ss1'); if(ss) ss.textContent=workingSessions().length;
   renderDashboardMeetings(window._dashboardBookings||window._currentBookings||[]);
-  const list=g('dcl'); if(!list) return;
-  const nums=clientNumberMap();
-  const recent=[...clients].sort((a,b)=>clientCreatedMs(b)-clientCreatedMs(a)).slice(0,3);
-  list.innerHTML=recent.length?recent.map(c=>ccHTML(c,nums.get(c.id))).join(''):'<div class="empty"><div class="ei">🌱</div><div class="et">Клиентов пока нет</div></div>';
 }
 
 function ccHTML(c,regNumber) {
   const ini=(c.fullName||'').split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'•';
   const sm={new:'sn',active:'sa',done:'sd'},sl={new:'Новый',active:'Активный',done:'Завершён'};
-  const cSess=sessions.filter(s=>s.clientId===c.id);
+  const cSess=workingSessionsForClient(c.id);
   const paid=cSess.reduce((sum,s)=>sum+(parseFloat(s.payment)||0),0);
   return `<div class="cc" onclick="window.openCP('${c.id}')">
     <div class="cav">${ini}</div>
@@ -1452,8 +1508,25 @@ function rClients(filter='') {
   const q=(filter||'').toLowerCase();
   const nums=clientNumberMap();
   const x=clientsByRegistrationAsc().filter(c=>!q||[c.fullName,c.email,c.contacts].some(v=>(v||'').toLowerCase().includes(q)));
-  list.innerHTML=x.length?x.map(c=>ccHTML(c,nums.get(c.id))).join(''):'<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
+  if(!x.length){
+    list.innerHTML='<div class="empty"><div class="ei">👥</div><div class="et">Нет клиентов</div></div>';
+    return;
+  }
+  list.innerHTML=`<div class="clients-table-wrap"><table class="clients-table">
+    <thead><tr><th>№</th><th>Имя</th><th>Email</th><th>Контакты</th><th style="text-align:center">Сессий</th></tr></thead>
+    <tbody>${x.map(c=>{
+      const count=workingSessionsForClient(c.id).length;
+      return `<tr onclick="window.openCP('${escHTML(c.id)}')">
+        <td class="clients-num">${nums.get(c.id)||'—'}</td>
+        <td class="clients-name">${escHTML(c.fullName||'Без имени')}</td>
+        <td class="clients-email">${escHTML(c.email||'—')}</td>
+        <td class="clients-contact">${escHTML(c.contacts||'—')}</td>
+        <td class="clients-count">${count}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
 }
+
 function filterC(v){rClients(v);}
 
 async function saveNC() {
@@ -2379,7 +2452,7 @@ function rProf() {
   const ppn=g('ppn');if(ppn)ppn.textContent=CU?.name||'';
   const ppe=g('pp-email');if(ppe)ppe.textContent=CU?.email||auth.currentUser?.email||'—';
   const psc=g('psc');if(psc)psc.textContent=clients.length;
-  const pss=g('pss');if(pss)pss.textContent=sessions.length;
+  const pss=g('pss');if(pss)pss.textContent=workingSessions().length;
   const code=g('specialist-code');if(code)code.textContent=CU?.code||'—';
   renderMeetingTypesManager();
 }
@@ -2400,7 +2473,7 @@ function refreshCV(uid) {
   });
 
   // Stats
-  const sc=g('cv-sess-count'); if(sc) sc.textContent=sorted.length;
+  const sc=g('cv-sess-count'); if(sc) sc.textContent=sorted.filter(s=>s.type!=='diagnostic').length;
   const dc=g('cv-diag-count'); if(dc) dc.textContent=sorted.filter(s=>s.type==='diagnostic').length;
 
   // Latest recommendations from most recent diagnostic
@@ -2901,13 +2974,13 @@ function legacyStoredDateToLocal(key){
 }
 function bookingDateKey(b){
   if(!b?.date) return '';
-  // New records and specialist-created sessions already store the real local date.
-  if(b.calendarDateMode===CALENDAR_DATE_MODE || b.source==='specialist') return b.date;
   // A linked working session is the strongest source of truth for the intended date.
   const linked=b.sessionId?sessions.find(s=>s.id===b.sessionId):sessions.find(s=>s.bookingId===b.id);
   if(linked?.sessionDate) return linked.sessionDate;
-  // Compatibility for bookings created by the old UTC-based calendar.
-  return legacyStoredDateToLocal(b.date);
+  // Booking dates entered/confirmed by a person are already calendar dates.
+  // Do NOT shift all legacy bookings by +1 day: the old UTC bug affected visual schedule keys,
+  // and a blanket shift can move real meetings to the next day.
+  return b.date;
 }
 function bookingDateTime(b){
   const dk=bookingDateKey(b);
