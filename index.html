@@ -1638,7 +1638,19 @@ function minutesToTime(minutes){
   return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 }
 
-async function findScheduleConflict(date,time,durationMinutes=DEFAULT_MEETING_DURATION,excludeBookingId='',excludeSessionId='') {
+function bookingBelongsToSession(b,s){
+  if(!b||!s) return false;
+  if(b.id&&s.bookingId&&b.id===s.bookingId) return true;
+  if(b.sessionId&&b.sessionId===s.id) return true;
+  const sameClient=!!((s.clientId&&b.clientDocId===s.clientId)||(s.clientUid&&b.clientUid===s.clientUid));
+  const sameOriginalSlot=sameClient&&bookingDateKey(b)===getSessionDateKey(s)&&(b.time||'')===(s.sessionTime||'');
+  // Older builds could leave a duplicate confirmed booking for the same client/session slot.
+  // Treat that duplicate as the same meeting so it cannot block editing its own session.
+  if(sameOriginalSlot&&(b.source==='specialist'||!b.sessionId)) return true;
+  return false;
+}
+
+async function findScheduleConflict(date,time,durationMinutes=DEFAULT_MEETING_DURATION,excludeBookingId='',excludeSessionId='',currentSession=null) {
   if(!date||!time||!CU?.uid) return null;
   const candidate=meetingInterval(date,time,durationMinutes);
   if(!candidate) return null;
@@ -1652,6 +1664,7 @@ async function findScheduleConflict(date,time,durationMinutes=DEFAULT_MEETING_DU
     if(d.id===excludeBookingId) return false;
     const b={id:d.id,...d.data()};
     if(excludeSessionId&&b.sessionId===excludeSessionId) return false;
+    if(currentSession&&bookingBelongsToSession(b,currentSession)) return false;
     return meetingIntervalsOverlap(candidate,meetingInterval(bookingDateKey(b),b.time||'00:00',bookingDurationMinutes(b)));
   });
   return hit?{kind:'booking',id:hit.id,data:hit.data()}:null;
@@ -1812,7 +1825,7 @@ function setSessionSaveStatus(text,isError=false){
 function sessionFieldChanged(el){
   if(!el||!el.dataset.sessionId||!el.dataset.field) return;
   const sid=el.dataset.sessionId, field=el.dataset.field;
-  const clientAllowed=['insights','takeaway','nextActions'];
+  const clientAllowed=['request','desiredResult','insights','takeaway','nextActions'];
   const specialistAllowed=['request','desiredResult','insights','takeaway','nextActions','specialistComment','privateNote','payment'];
   const allowed=CU?.role==='client'?clientAllowed:specialistAllowed;
   if(!allowed.includes(field)) return;
@@ -1873,7 +1886,7 @@ function openSD(sid) {
 
   const clientPrompt=!isSpec?`<div style="background:${done?'#e8f5e9':'#fff8e1'};border-radius:14px;padding:16px;margin-bottom:20px;border-left:4px solid ${done?'#2e7d32':'#d4a853'}">
       <div style="font-weight:700;font-size:14px;margin-bottom:5px">${done?'✓ Итог сессии заполнен':'Зафиксируйте итог встречи ✦'}</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.55">${done?'Вы можете в любой момент вернуться и дополнить свои записи.':'После встречи уделите 3–5 минут трём полям: «Мои инсайты», «С чем я ухожу» и «Мои следующие действия».'}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.55">${done?'Вы можете в любой момент вернуться и дополнить свои записи, включая запрос и желаемый результат.':'Запрос и желаемый результат можно сформулировать здесь самостоятельно. После встречи уделите 3–5 минут полям «Мои инсайты», «С чем я ухожу» и «Мои следующие действия».'}</div>
     </div>`:'';
 
   sdc.innerHTML=`
@@ -1884,8 +1897,8 @@ function openSD(sid) {
       <div id="session-save-status" style="font-size:11px;color:#2e7d32;margin-top:8px">Сохранено ✓</div>
     </div>
     ${clientPrompt}
-    ${sessionTextarea(s.id,'Запрос','request',s.request,isSpec,false,'Сформулированный запрос клиента')}
-    ${sessionTextarea(s.id,'Желаемый результат','desiredResult',s.desiredResult,isSpec,false,'Какой результат встречи будет полезен')}
+    ${sessionTextarea(s.id,'Запрос','request',s.request,true,false,'Сформулируйте запрос, с которым хотите поработать')}
+    ${sessionTextarea(s.id,'Желаемый результат','desiredResult',s.desiredResult,true,false,'Какой результат этой встречи был бы для вас полезен')}
     ${sessionTextarea(s.id,'Мои инсайты','insights',s.insights,true,false,'Ключевые мысли и осознания')}
     ${sessionTextarea(s.id,'С чем я ухожу','takeaway',takeaway,true,false,'Главный итог встречи')}
     ${sessionTextarea(s.id,'Мои следующие действия','nextActions',nextActions,true,false,'Что я выбираю сделать дальше')}
@@ -1969,8 +1982,14 @@ async function updateSession(sid) {
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
-    const conflict=await findScheduleConflict(sessDate,sessTime,durationMinutes,current.bookingId||'',sid);
-    if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
+    const scheduleChanged=
+      sessDate!==getSessionDateKey(current)||
+      sessTime!==(current.sessionTime||'10:00')||
+      durationMinutes!==sessionDurationMinutes(current);
+    if(scheduleChanged){
+      const conflict=await findScheduleConflict(sessDate,sessTime,durationMinutes,current.bookingId||'',sid,current);
+      if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
+    }
     const cl=clients.find(c=>c.id===current.clientId);
     const batch=db.batch();
     const sRef=db.collection('sessions').doc(sid);
@@ -2494,8 +2513,14 @@ async function confirmBooking() {
     if(!booking){const snap=await db.collection('bookings').doc(id).get(); if(snap.exists) booking={id:snap.id,...snap.data()};}
     if(!booking){toast('Встреча не найдена');return;}
     const linked=sessions.find(s=>s.bookingId===id)||(booking.sessionId?sessions.find(s=>s.id===booking.sessionId):null);
-    const conflict=await findScheduleConflict(date,time,durationMinutes,id,linked?.id||booking.sessionId||'');
-    if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
+    const scheduleChanged=
+      date!==bookingDateKey(booking)||
+      time!==(booking.time||'10:00')||
+      durationMinutes!==bookingDurationMinutes(booking);
+    if(scheduleChanged){
+      const conflict=await findScheduleConflict(date,time,durationMinutes,id,linked?.id||booking.sessionId||'',linked||null);
+      if(conflict){toast('Этот интервал пересекается с другой встречей');return;}
+    }
     const batch=db.batch();
     batch.update(db.collection('bookings').doc(id),{
       status:'confirmed',date,time,durationMinutes,meetLink,calendarDateMode:CALENDAR_DATE_MODE,
